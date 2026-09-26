@@ -36,6 +36,3 @@ file(GLOB_RECURSE LIBRARIES CONFIGURE_DEPENDS
 
 set_target_properties(Kyber PROPERTIES LINK_FLAGS "/ignore:4075 /ignore:4098 /LTCG")
 target_link_libraries(Kyber Ws2_32.lib d3d11.lib dxgi.lib ${LIBRARIES})
-
-add_subdirectory(Launcher)
-add_subdirectory(Installer)

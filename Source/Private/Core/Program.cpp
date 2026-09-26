@@ -4,7 +4,6 @@
 
 #include <Base/Version.h>
 #include <Base/Log.h>
-#include <Render/Renderer.h>
 #include <Utilities/ErrorUtils.h>
 #include <Utilities/PlatformUtils.h>
 #include <Utilities/MemoryUtils.h>
