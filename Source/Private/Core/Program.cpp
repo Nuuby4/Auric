@@ -9,6 +9,8 @@
 #include <Utilities/PlatformUtils.h>
 #include <Utilities/MemoryUtils.h>
 #include <Hook/HookManager.h>
+#include <SDK/Funcs.h>
+#include <SDK/TypeInfo.h>
 #include <SDK/SDK.h>
 #include <Network/SocketManager.h>
 #include <API/KyberAPIService.h>
@@ -20,8 +22,9 @@
 #include <chrono>
 #include <thread>
 
-#define OFFSET_CLIENT_STATE_CHANGE HOOK_OFFSET(0x140A8C7A0)
-#define OFFSET_GET_SETTINGS_OBJECT HOOK_OFFSET(0x1401F7BD0)
+#define OFFSET_GET_SETTINGS_OBJECT HOOK_OFFSET(0x143363D80)
+#define OFFSET_MESSAGEMANAGERDISPATCHMESSAGE HOOK_OFFSET(0x1432FF410)
+#define OFFSET_SETTINGS_CTR HOOK_OFFSET(0x143363EE0)
 
 Kyber::Program* g_program;
 
@@ -29,7 +32,6 @@ namespace Kyber
 {
 Program::Program(HMODULE module)
     : m_module(module)
-    , m_api(nullptr)
     , m_server(nullptr)
     , m_clientState(ClientState_None)
     , m_joining(false)
@@ -61,23 +63,20 @@ Program::~Program()
     KYBER_LOG(LogLevel::Info, "Destroying Kyber");
     HookManager::RemoveHooks();
     delete m_server;
-    delete m_api;
-    delete g_renderer;
 }
 
 DWORD WINAPI Program::InitializationThread()
 {
     KYBER_LOG(LogLevel::Info, "Initializing...");
-    KYBER_LOG(LogLevel::Info, " _____     _   _   _     ____           _ ");
-    KYBER_LOG(LogLevel::Info, "| __  |___| |_| |_| |___|    \\ ___ ___| |_");
-    KYBER_LOG(LogLevel::Info, "| __ -| .'|  _|  _| | -_|  |  | .'|_ -|   |");
-    KYBER_LOG(LogLevel::Info, "|_____|__,|_| |_| |_|___|____/|__,|___|_|_|");
+    KYBER_LOG(LogLevel::Info, " __ __              __           ");
+    KYBER_LOG(LogLevel::Info, "|  \\  | _  _  _  _ |  |, __  _   ");
+    KYBER_LOG(LogLevel::Info, "|  |  || || || || ||  o \\\\ \\| |   ");
+    KYBER_LOG(LogLevel::Info, "|__\\__|\\____|\\____||____| \\  //   ");
+    KYBER_LOG(LogLevel::Info, "                           ///    ");
 
-    InitializeGameHooks();
-
-    m_api = new KyberAPIService();
-    g_renderer = new Renderer();
-    m_server = new Server();
+    Initialize();
+    m_client = new Client();
+    //m_server = new Server();
 
     KYBER_LOG(LogLevel::Info, "Initialized Kyber v" << KYBER_VERSION);
     KYBER_LOG(LogLevel::Warning, "Press [INSERT] on your Keyboard to use Kyber!");
@@ -97,10 +96,84 @@ DWORD WINAPI Program::InitializationThread()
     return 0;
 }
 
-HookTemplate program_hook_offsets[] = {
-    { OFFSET_CLIENT_STATE_CHANGE, ClientStateChangeHk },
-    { OFFSET_GET_SETTINGS_OBJECT, GetSettingsObjectHk },
+__int64 GetSettingsObjectHk(__int64 inst, const char* identifier)
+{
+    static const auto trampoline = HookManager::Call(GetSettingsObjectHk);
+    return trampoline(inst, identifier);
+}
+
+void MessageManagerDispatchMessageHk(void* inst, Message* message)
+{
+    static const auto trampoline = HookManager::Call(MessageManagerDispatchMessageHk);
+
+    if (!message)
+    {
+        return;
+    }
+
+    TypeInfo* type = message->getType();
+    if (!type || !type->typeInfoData)
+    {
+        trampoline(inst, message);
+        return;
+    }
+
+    std::string typeName = type->getName();
+
+    if (typeName == "NetworkCreatePlayerMessage")
+    {
+        NetworkCreateJoiningPlayerMessage* msg = (NetworkCreateJoiningPlayerMessage*)message;
+        msg->isSpectator = false;
+    }
+
+    if (typeName == "ServerLevelCompletedMessage")
+    {
+        KYBER_LOG(LogLevel::Info, "Game ended, moving to next level");
+
+        auto& mapList = g_program->m_server->m_mapList;
+        GameSettings* gameSettings = Settings<GameSettings>("Game");
+
+        // @TODO Research Game's Actual Map Rotation Implementation
+        NextLevelInfo nextLevel;
+
+        if (!mapList.empty())
+        {
+            MapRotation* map = mapList.front();
+
+            nextLevel.level = map->Level;
+            nextLevel.gameMode = map->GameMode;
+
+            gameSettings->Level = strdup(map->Level);
+            std::string gameModeStr = "GameMode=" + std::string(map->GameMode);
+            gameSettings->DefaultLayerInclusion = strdup(gameModeStr.c_str());
+
+            delete map;
+            mapList.erase(mapList.begin());
+        }
+        else
+        {
+            nextLevel.level = gameSettings->Level;
+            nextLevel.gameMode = strchr(gameSettings->DefaultLayerInclusion, '=') + 1;
+        }
+        ServerMapSequencer_LoadNextLevel(nextLevel);
+    }
+    trampoline(inst, message);
+}
+
+HookTemplate program_hook_offsets[] = { 
+    { OFFSET_GET_SETTINGS_OBJECT, GetSettingsObjectHk }, 
+    { OFFSET_MESSAGEMANAGERDISPATCHMESSAGE, MessageManagerDispatchMessageHk } 
 };
+
+void Program::InitializeGamePatches()
+{
+    BYTE alwaysTruePatch[6] = { 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
+    MemoryUtils::Patch((void*)0x143338021, alwaysTruePatch, sizeof(alwaysTruePatch)); // Enable All Console Commands
+    MemoryUtils::Patch((void*)0x143362261, alwaysTruePatch, sizeof(alwaysTruePatch)); // Expose Hidden Settings to Console
+
+    BYTE alwaysFalsePatch[2] = { 0xEB, 0x0F };
+    MemoryUtils::Patch((void*)0x1432F28C6, alwaysFalsePatch, sizeof(alwaysFalsePatch)); // Allow Multiple Game Instances 
+}
 
 void Program::InitializeGameHooks()
 {
@@ -111,44 +184,12 @@ void Program::InitializeGameHooks()
     Hook::ApplyQueuedActions();
 }
 
-__int64 ClientStateChangeHk(__int64 inst, ClientState currentClientState, ClientState lastClientState)
+void Program::Initialize()
 {
-    static const auto trampoline = HookManager::Call(ClientStateChangeHk);
-    g_program->m_clientState = currentClientState;
-    KYBER_LOG(LogLevel::DebugPlusPlus, "Client state changed to " << currentClientState);
-    Server* server = g_program->m_server;
-    if (currentClientState == ClientState_Startup)
-    {
-        if (server->m_running)
-        {
-            server->Stop();
+    InitializeGamePatches();
+    InitializeGameHooks();
 
-            GameSettings* gameSettings = Settings<GameSettings>("Game");
-            gameSettings->Level = "Levels/FrontEnd/FrontEnd";
-            gameSettings->DefaultLayerInclusion = "";
-        }
-        else
-        {
-            if (!g_program->m_joining)
-            {
-                Settings<ClientSettings>("Client")->ServerIp = "";
-            }
-            else
-            {
-                g_program->m_joining = false;
-            }
-        }
-    }
-    else if (currentClientState == ClientState_Ingame && server->m_running)
-    {
-        server->InitializeGameSettings();
-    }
-    return trampoline(inst, currentClientState, lastClientState);
-}
-
-__int64 GetSettingsObjectHk(__int64 inst, const char* identifier)
-{
-    static const auto trampoline = HookManager::Call(GetSettingsObjectHk);
-    return trampoline(inst, identifier);
+    //m_server->Initialize();
+    m_client->Initialize();
 }
 } // namespace Kyber

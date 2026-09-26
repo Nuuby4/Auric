@@ -2,7 +2,24 @@
 
 #pragma once
 
+#include <SDK/SDK.h>
+
 #include <stddef.h>
+#include <cstdint>
+#include <string>
+
+#define OFFSET_TYPEINFO_GAMESETTINGS 0x142FC5EC0
+#define OFFSET_TYPEINFO_NETWORKSETTINGS 0x142FBF790
+#define OFFSET_TYPEINFO_SYNCEDGAME 0x142FC5E60
+#define OFFSET_TYPEINFO_WHITESHARK 0x1430574A0
+#define OFFSET_TYPEINFO_WHITESHARKUI 0x14303E200
+#define OFFSET_TYPEINFO_SERVERSETTINGS 0x142FBE7D0
+#define OFFSET_TYPEINFO_CLIENTSETTINGS 0x142FCCC10
+#define OFFSET_TYPEINFO_UISETTINGS 0x142FD47D0
+#define OFFSET_TYPEINFO_GAMERENDERSETTINGS 0x142FE8D30
+#define OFFSET_TYPEINFO_ONLINESETTINGS 0x142FFE600
+#define OFFSET_TYPEINFO_ORIGINSETTINGS 0x142FFF7D0
+#define OFFSET_TYPEINFO_PERSISTENCESETTINGS 0x143046A40
 
 namespace Kyber
 {
@@ -33,6 +50,21 @@ enum ClientState
 
     ClientState_None,
 };
+
+std::string ClientStateToString(ClientState state);
+
+enum BackendType
+{
+    Backend_Lan,
+    Backend_Blaze,
+    Backend_Peer,
+    Backend_Local,
+    Backend_Playground,
+    Backend_Count_
+};
+
+std::string BackendTypeToString(BackendType type);
+
 enum SecureReason
 {
     SecureReason_Ok,
@@ -247,35 +279,82 @@ class PlayerData : public Asset
 public:
     PlayerViewData* PlayerView; // 0x0020
 };
+
+enum SKU
+{
+    WW,
+    EU,
+    US,
+    JPN,
+    ROA,
+    RU,
+    EN
+};
+
+struct GuidFrosty
+{
+    uint32_t data1;
+    uint16_t data2;
+    uint16_t data3;
+    uint8_t data4[8];
+};
+
+class PersistenceSettings : SystemSettings
+{
+public:
+    Guid PersistenceConfigurationGuid;
+};
+
 class GameSettings : public SystemSettings
 {
 public:
-    uint32_t MaxPlayerCount;                          // 0x0020
-    char _0x0024[4];                                  // 0x0024
-    GameModeViewDefinition** GameModeViewDefinitions; // 0x0028
-    VersionData* Version;                             // 0x0030
-    SubWorldInclusion* SubWorldInclusion;             // 0x0038
-    PlayerData* Player;                               // 0x0040
-    GameSettingsComponent** GameSettingsComponents;   // 0x0048
-    uint32_t MaxSpectatorCount;                       // 0x0050
-    LogFileCollisionMode LogFileCollisionMode;        // 0x0054
-    uint32_t LogFileRotationHistoryLength;            // 0x0058
-    char _0x005C[4];                                  // 0x005C
-    char* Level;                                      // 0x0060
-    char* StartPoint;                                 // 0x0068
-    char* InstallationLevel;                          // 0x0070
-    char* InstallationStartPoint;                     // 0x0078
-    char* InstallationDefaultLayerInclusion;          // 0x0080
-    char* ActiveGameModeViewDefinition;               // 0x0088
-    TeamId DefaultTeamId;                             // 0x0090
-    char _0x0094[4];                                  // 0x0094
-    char* DefaultLayerInclusion;                      // 0x0098
-    float TimeToWaitForQuitTaskCompletion;            // 0x00A0
-    int32_t DifficultyIndex;                          // 0x00A4
-    bool LogFileEnable;                               // 0x00A8
-    bool ResourceRefreshAlwaysAllowed;                // 0x00A9
-    bool SpawnMaxLocalPlayersOnStartup;               // 0x00AA
-    char _0x00AB[5];                                  // 0x00AB
+    uint32_t MaxPlayerCount;
+    uint32_t MaxSpectatorCount;
+    uint32_t MinPlayerCountElimination;
+    LogFileCollisionMode LogFileCollisionMode;
+    uint32_t LogFileRotationHistoryLength;
+    char* Level;
+    char* StartPoint;
+    char* InstallationLevel;
+    char* InstallationStartPoint;
+    char* InstallationDefaultLayerInclusion;
+    char _0x000[8]; // InputConfiguration InputConfiguration;
+    char* ActiveGameModeViewDefinition;
+    GameModeViewDefinition** GameModeViewDefinitions;
+    TeamId DefaultTeamId;
+    uint32_t PS3ContentRatingAge;
+    uint32_t LogHistory;
+    VersionData* Version;
+    SubWorldInclusion* LayerInclusionTable;
+    char* DefaultLayerInclusion;
+    float TimeBeforeSpawnIsAllowed;
+    float LevelWarmUpTime;
+    float TimeToWaitForQuitTaskCompletion;
+    PlayerData* Player;
+    char pad_test[8]; // DifficultyDatas DifficultySettings;
+    uint32_t DifficultyIndex;
+    SKU CurrentSKU;
+    GameSettingsComponent GameSettingsComponents;
+    bool LogFileEnable;
+    bool ResourceRefreshAlwaysAllowed;
+    bool SpawnMaxLocalPlayersOnStartup;
+    bool UseSpeedBasedDetailedCollision;
+    bool UseSingleWeaponSelector;
+    bool AutoAimEnabled;
+    bool HasUnlimitedAmmo;
+    bool HasUnlimitedMags;
+    bool RotateLogs;
+    bool AdjustVehicleCenterOfMass;
+    bool AimAssistEnabled;
+    bool AimAssistUsePolynomials;
+    bool ForceFreeStreaming;
+    bool ForceDisableFreeStreaming;
+    bool IsGodMode;
+    bool IsJesusMode;
+    bool IsJesusModeAi;
+    bool GameAdministrationEnabled;
+    bool AllowDestructionOutsideCombatArea;
+    bool DefaultCameraInheritsFov;
 };
 class NetworkSettings : public SystemSettings
 {
@@ -319,69 +398,111 @@ public:
     bool MLUREnabled;                                // 0x00AB
     char _0x00AC[4];                                 // 0x00AC
 };
-struct Guid
-{
-    uint32_t data1;
-    uint16_t data2;
-    uint16_t data3;
-    uint8_t data4[8];
-};
+
 class ClientSettings : public SystemSettings
 {
 public:
-    Guid AudioSystemGuid;               // 0x0020
-    char* ScreenshotFilename;           // 0x0030
-    char* ScreenshotSuffix;             // 0x0038
-    uint32_t Team;                      // 0x0040
-    int32_t SpawnPointIndex;            // 0x0044
-    char* ServerIp;                     // 0x0048
-    char* SecondaryServerIp;            // 0x0050
-    float AimScale;                     // 0x0058
-    float IncomingFrequency;            // 0x005C
-    float OutgoingFrequency;            // 0x0060
-    uint32_t IncomingRate;              // 0x0064
-    uint32_t OutgoingRate;              // 0x0068
-    float LoadingTimeout;               // 0x006C
-    float LoadedTimeout;                // 0x0070
-    float IngameTimeout;                // 0x0074
-    float CpuQuality;                   // 0x0078
-    char _0x007C[4];                    // 0x007C
-    char* InstancePath;                 // 0x0080
-    float FrameHistoryTimeWarnScale;    // 0x0088
-    bool IsSpectator;                   // 0x008C
-    bool AllowVideoRecording;           // 0x008D
-    bool DebrisClusterEnabled;          // 0x008E
-    bool VegetationEnabled;             // 0x008F
-    bool ForceEnabled;                  // 0x0090
-    bool WorldRenderEnabled;            // 0x0091
-    bool TerrainEnabled;                // 0x0092
-    bool WaterPhysicsEnabled;           // 0x0093
-    bool OvergrowthEnabled;             // 0x0094
-    bool EffectsEnabled;                // 0x0095
-    bool AutoIncrementPadIndex;         // 0x0096
-    bool LipSyncEnabled;                // 0x0097
-    bool PauseGameOnStartUp;            // 0x0098
-    bool SkipFastLevelLoad;             // 0x0099
-    bool ScreenshotToFile;              // 0x009A
-    bool LoadMenu;                      // 0x009B
-    bool DebugMenuOnLThumb;             // 0x009C
-    bool ScreenshotComparisonsEnable;   // 0x009D
-    bool RenderTags;                    // 0x009E
-    bool Scheme0FlipY;                  // 0x009F
-    bool Scheme1FlipY;                  // 0x00A0
-    bool Scheme2FlipY;                  // 0x00A1
-    bool HavokVisualDebugger;           // 0x00A2
-    bool HavokCaptureToFile;            // 0x00A3
-    bool ShowBuildId;                   // 0x00A4
-    bool ExtractPersistenceInformation; // 0x00A5
-    bool EnableRestTool;                // 0x00A6
-    bool LocalVehicleSimulationEnabled; // 0x00A7
-    bool AutoUnspawnDynamicObjects;     // 0x00A8
-    bool QuitGameOnServerDisconnect;    // 0x00A9
-    bool LuaOptionSetEnable;            // 0x00AA
-    bool FastExit;                      // 0x00AB
-    char _0x00AC[4];                    // 0x00AC
+    void* PadsRumbleEnabled;
+    void* PadsIndex[8];
+    float JuiceDistanceThreshold;
+    float JuiceTimeThreshold;
+    float JuiceVehicleDistanceThreshold;
+    float JuiceVehicleTimeThreshold;
+    char* JuiceReportPerformanceCategory;
+    char* ScreenshotFilename;
+    char* ScreenshotSuffix;
+    uint32_t Team;
+    int32_t SpawnPointIndex;
+    char* ServerIp;
+    char* SecondaryServerIp;
+    float AimScale;
+    float MouseSensitivityMin;
+    float MouseSensitivitySliderRange;
+    float MouseSensitivityFactor;
+    float MouseSensitivityPower;
+    float XenonGamepadDeadZoneCenter;
+    float XenonGamepadDeadZoneAxis;
+    float XenonGamepadDeadZoneOffsetAxis;
+    float PS3GamepadDeadZoneCenter;
+    float PS3GamepadDeadZoneAxis;
+    float PS3GamepadDeadZoneOffsetAxis;
+    float PCGamepadDeadZoneCenter;
+    float PCGamepadDeadZoneAxis;
+    float PCGamepadDeadZoneOffsetAxis;
+    float Gen4aGamepadDeadZoneCenter;
+    float Gen4aGamepadDeadZoneAxis;
+    float Gen4aGamepadDeadZoneOffsetAxis;
+    float Gen4bGamepadDeadZoneCenter;
+    float Gen4bGamepadDeadZoneAxis;
+    float Gen4bGamepadDeadZoneOffsetAxis;
+    float GamepadGuid;
+    float ClientBulletsPerQuery;
+    float IncomingFrequency;
+    uint32_t IncomingRate;
+    uint32_t OutgoingRate;
+    float LoadingTimeout;
+    float LoadedTimeout;
+    float IngameTimeout;
+    char* InstancePath;
+    float FrameHistoryTimeWarnScale;
+    bool IsSpectator;
+    bool VsyncEnable;
+    bool VsyncDuringLoadingScreenEnable;
+    bool VisualFrameInterpolation;
+    bool AllowVideoRecording;
+    bool DebrisClusterEnabled;
+    bool VegetationEnabled;
+    bool ForceEnabled;
+    bool WorldRenderEnabled;
+    bool TerrainEnabled;
+    bool WaterPhysicsEnabled;
+    bool OvergrowthEnabled;
+    bool EffectsEnabled;
+    bool EmittersEnabled;
+    bool AutoIncrementPadIndex;
+    bool JuicePlayerReportPositionEnabled;
+    bool JuiceReportPerformanceEnabled;
+    bool JuiceReportMemoryEnabled;
+    bool JuiceReportPerformanceOnlyOnSimFrames;
+    bool LipSyncEnabled;
+    bool OnDamageSpottingEnabled;
+    bool IgnoreClientFireRateMultiplier;
+    bool PauseGameOnStartUp;
+    bool SkipFastLevelLoad;
+    bool InputEnable;
+    bool ScreenshotToFile;
+    bool LoadMenu;
+    bool DebugMenuOnLThumb;
+    bool InvertFreeCamera;
+    bool ScreenshotComparisonsEnable;
+    bool RenderTags;
+    bool InvertPitch;
+    bool InvertPadPcRightStick;
+    bool Scheme0FlipY;
+    bool Scheme1FlipY;
+    bool Scheme2FlipY;
+    bool InvertYaw;
+    bool ConsoleInputEmulation;
+    bool InputLayoutChangeOnlyForPad;
+    bool SampleInputEveryVisualFrame;
+    bool SampleVisualFrameInputPostFrame;
+    bool HavokVisualDebugger;
+    bool HavokCaptureToFile;
+    bool UseMouseAndKeyboardSystem;
+    bool UseGlobalGamePadInput;
+    bool ShowBuildId;
+    bool ExtractPersistenceInformation;
+    bool EnableRestTool;
+    bool LocalVehicleSimulationEnabled;
+    bool AsyncClientBulletEntity;
+    bool AutoUnspawnDynamicObjects;
+    bool QuitGameOnServerDisconnect;
+    bool DebugTrackAllPlayersInSpawnScreen;
+    bool UseOldKillerCamera;
+    bool LuaOptionSetEnable;
+    bool FrameInterpolationAudioUpdate;
 };
+
 class WSGameSettings : public SystemSettings
 {
 public:
