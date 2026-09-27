@@ -15,6 +15,9 @@
     #define _WINSOCKAPI_
 
 #endif
+
+#include <EASTL/fixed_vector.h>
+
 #include <stddef.h>
 #include <string>
 #include <vector>
@@ -23,6 +26,14 @@
 
 namespace Kyber
 {
+
+#define STRIP_PARENS(...) __VA_ARGS__
+#define AU_DECLARE_GAMEMEMBERFUNC(ptr, returnType, name, args, ...)                                                                         \
+    inline returnType name(__VA_ARGS__)                                                                                                     \
+    {                                                                                                                                       \
+        return reinterpret_cast<returnType(__fastcall*)(void*, __VA_ARGS__)>(ptr)(this, STRIP_PARENS args);                                 \
+    }                                                                                                                                       //\
+
 struct Guid
 {
     union
@@ -217,6 +228,107 @@ struct ClientLobbyInformation
     }
 };
 
+class ClientPlayer
+{
+public:
+    void* vtable;                     // 0x0000
+    class PlayerData* m_data;         // 0x0008
+    class MemoryArena* m_memoryArena; // 0x0010
+    char* m_name;                     // 0x0018
+    char pad_0020[0x14];              // 0x0020
+    uint64_t m_id;
+    char pad_003C[0x2B68];
+    bool isAiPlayer;
+    char pad_0003[0x3];
+    uint32_t teamId; // 2BAC
+    char pad_0000[0x108];
+};
+
+class ClientPlayerManager
+{
+public:
+    char pad_0000[8];
+    class PlayerData* m_playerData;
+    uint32_t m_maxPlayerCount;      // 0x0010
+    uint32_t m_playerCountBitCount; // 0x0014
+    uint32_t m_playerIdBitCount;    // 0x0018
+    char pad_001C[0xBC];
+    // Technically the players, spectators, have their own struct but they're similar enough to where I can use the ServerPlayer
+    eastl::fixed_vector<ClientPlayer*, 64> m_players;
+    eastl::fixed_vector<ClientPlayer*, 64> m_spectators;
+    eastl::fixed_vector<ClientPlayer*, 64> m_localPlayers;
+
+    ClientPlayer* GetPlayerById(__int64 id)
+    {
+        for (const auto& player : m_players)
+        {
+            if (player == nullptr)
+                continue;
+
+            if (player->m_id == id)
+                return player;
+        }
+        return nullptr;
+    }
+};
+
+class ClientConnection
+{
+public:
+    char pad_0[0x38];
+    void* client_connection;
+};
+
+class ClientGameContext
+{
+public:
+    char pad_0000[0x8];                 // 0x0
+    void* m_realm;                      // 0x8
+    void* messageManager;               // 0x10
+    char pad_0018[0x10];                // 0x20
+    __int64 physicsManager;             // 0x28
+    char pad_0030[0x8];                 // 0x30
+    void* clientLevel;                  // 0x38
+    char pad_0040[0x28];                // 0x60
+    ClientPlayerManager* playerManager; // 0x68
+    ClientConnection* client;
+
+    ClientPlayerManager* GetPlayerManager()
+    {
+        if (this != nullptr && this->playerManager != nullptr)
+        {
+            return this->playerManager;
+        }
+
+        return nullptr;
+    }
+
+    static ClientGameContext* Get()
+    { 
+        return *(ClientGameContext**)0x142AE8080;
+    }
+};
+
+class SocketManagerCreator;
+
+class GameClient
+{
+public:
+    void* vtable;
+    class GameSettings* m_gameSettings;       // 0x8
+    char pad_0010[0x28];                      // 0x10
+    ClientGameContext* m_clientGameContext;   // 0x38
+    class ClientSettings* m_clientSettings;   // 0x40
+    char pad_0048[0x70];                      // 0x48
+    SocketManagerCreator* m_socketManagerCreator;           // 0xB8
+
+    static GameClient* Get()
+    {
+        return *reinterpret_cast<GameClient**>(
+            *reinterpret_cast<uintptr_t*>(reinterpret_cast<uintptr_t(*)()>(0x14659DE50)() + 0x20) + 0x28);
+    }
+};
+
 class NextLevelInfo
 {
 public:
@@ -352,7 +464,6 @@ public:
 };
 
 class SocketManager;
-
 struct ServerSpawnOverrides
 {
     LevelSetup* levelSetup;
@@ -360,19 +471,6 @@ struct ServerSpawnOverrides
     __int64 connectionCreator;
     __int64 peerCreator;
 };
-
-class ServerPlayerManager
-{
-public:
-    char pad_0000[8];                  // 0x0000
-    class PlayerData* m_playerData;    // 0x0008
-    uint32_t m_maxPlayerCount;         // 0x0010
-    uint32_t m_playerCountBitCount;    // 0x0014
-    uint32_t m_playerIdBitCount;       // 0x0018
-    char pad_001C[212];                // 0x001C
-    class ServerPlayer* m_players[64]; // 0x00F0
-    char pad_02F0[1276];               // 0x02F0
-};                                     // Size: 0x07EC
 
 struct ServerCharacter
 {
@@ -396,7 +494,52 @@ public:
     char pad_0004[0xD8];
     ServerCharacter* m_serverCharacter;     // 0x2C88
 
+    AU_DECLARE_GAMEMEMBERFUNC(0x143CBE6F0, void, SetTeam, (teamId), int teamId)
     //bool Teleport(const LinearTransform& transform);
+};
+
+class ServerPlayerManager
+{
+public:
+    char pad_0000[8];               // 0x0000
+    class PlayerData* m_playerData; // 0x0008
+    uint32_t m_maxPlayerCount;      // 0x0010
+    uint32_t m_playerCountBitCount; // 0x0014
+    uint32_t m_playerIdBitCount;    // 0x0018
+    char pad_001C[0x24C];
+    eastl::fixed_vector<ServerPlayer*, 64> m_players;
+    eastl::fixed_vector<ServerPlayer*, 64> m_spectators;
+    eastl::fixed_vector<ServerPlayer*, 64> m_localPlayers;
+
+    ServerPlayer* GetPlayerOrSpectator(uint64_t id);
+    ServerPlayer* GetPlayerOrSpectator(const char* name);
+
+    ServerPlayer* GetPlayer(const char* name);
+    ServerPlayer* GetSpectator(const char* name);
+
+    ServerPlayer* GetPlayer(uint64_t id, bool includeAI = false);
+    ServerPlayer* GetSpectator(uint64_t id);
+}; // Size: 0x07EC
+
+class ServerGameContext
+{
+public:
+    char pad_0000[0x8];
+    void* m_realm;
+    __int64 m_messageManager;
+    char pad_0018[0x50];
+    ServerPlayerManager* m_serverPlayerManager;     // 0x68
+    __int64 m_serverPeer;
+
+    static ServerGameContext* Get()
+    { 
+        return *(ServerGameContext**)0x142C20A00;
+    }
+
+    ServerPlayerManager* GetPlayerManager()
+    {
+        return m_serverPlayerManager;
+    }
 };
 
 class MemoryArena

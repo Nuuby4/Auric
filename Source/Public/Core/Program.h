@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <Core/Console.h>
 #include <Core/Client.h>
 #include <Core/Server.h>
 #include <SDK/TypeInfo.h>
@@ -10,8 +11,8 @@
 
 #include <Windows.h>
 
-#define OFFSET_GLOBAL_CLIENT 0x143DCB9D0
-#define OFFSET_GLOBAL_SETTINGS_MANAGER 0x143D11950
+#define OFFSET_GLOBAL_CLIENT 0x142B817E0
+#define OFFSET_GLOBAL_SETTINGS_MANAGER 0x142A4EA00
 
 namespace Kyber
 {
@@ -26,6 +27,7 @@ public:
 
     DWORD WINAPI InitializationThread();
     void Initialize();
+    void InitializeConsole();
     void InitializeGameHooks();
     void InitializeGamePatches();
 
@@ -42,6 +44,7 @@ public:
     }
 
     HMODULE m_module;
+    Console* m_console;
     Server* m_server;
     Client* m_client;
     ClientState m_clientState;

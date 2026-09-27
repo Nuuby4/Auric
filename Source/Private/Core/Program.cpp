@@ -75,7 +75,7 @@ DWORD WINAPI Program::InitializationThread()
 
     Initialize();
     m_client = new Client();
-    //m_server = new Server();
+    m_server = new Server();
 
     KYBER_LOG(LogLevel::Info, "Initialized Kyber v" << KYBER_VERSION);
     KYBER_LOG(LogLevel::Warning, "Press [INSERT] on your Keyboard to use Kyber!");
@@ -174,6 +174,11 @@ void Program::InitializeGamePatches()
     MemoryUtils::Patch((void*)0x1432F28C6, alwaysFalsePatch, sizeof(alwaysFalsePatch)); // Allow Multiple Game Instances 
 }
 
+void Program::InitializeConsole()
+{
+    m_console = new Console();
+}
+
 void Program::InitializeGameHooks()
 {
     for (HookTemplate& hook : program_hook_offsets)
@@ -188,7 +193,10 @@ void Program::Initialize()
     InitializeGamePatches();
     InitializeGameHooks();
 
-    //m_server->Initialize();
+    m_server->Initialize();
     m_client->Initialize();
+
+    // @TODO Setup inside MainInitHk
+    InitializeConsole();
 }
 } // namespace Kyber

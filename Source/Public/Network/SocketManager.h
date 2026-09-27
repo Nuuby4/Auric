@@ -45,13 +45,19 @@ public:
 class SocketManagerCreator
 {
 public:
-    SocketManagerCreator(SocketSpawnInfo info) : m_info(info) {}
+    SocketManagerCreator(SocketManager** socketManagerPtr, SocketSpawnInfo info)
+        : m_socketManagerPtr(socketManagerPtr)
+        , m_info(info)
+    {}
 
-	virtual SocketManager* createSocketManager()
+    virtual SocketManager* createSocketManager()
     {
-        return new SocketManager(ProtocolDirection::Serverbound, m_info);
+        SocketManager* socketManager = new SocketManager(ProtocolDirection::Serverbound, m_info);
+        *m_socketManagerPtr = socketManager;
+        return socketManager;
     }
 
+    SocketManager** m_socketManagerPtr;
     SocketSpawnInfo m_info;
 };
 } // namespace Kyber

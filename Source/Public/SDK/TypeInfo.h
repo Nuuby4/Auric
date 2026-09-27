@@ -129,11 +129,22 @@ enum SecureReason
     SecureReason_TrialExpired,
     SecureReason_TrialUpgraded
 };
+
+enum OnlineEnvironment
+{
+    OnlineEnvironment_Development,
+    OnlineEnvironment_Test,
+    OnlineEnvironment_Certification,
+    OnlineEnvironment_Production,
+    OnlineEnvironment_Count,
+};
+
 class DataContainer
 {
 public:
     char _0x000[24]; // 0x0000
 };
+
 enum GamePlatform
 {
     GamePlatform_Win32,   // 0x0000
@@ -147,18 +158,21 @@ enum GamePlatform
     GamePlatform_Invalid, // 0x0008
     GamePlatformCount     // 0x0009
 };
+
 class SystemSettings : public DataContainer
 {
 public:
     GamePlatform Platform; // 0x0018
     char _0x001C[4];       // 0x001C
 };
+
 enum LogFileCollisionMode
 {
     LFCM_Overwrite, // 0x0000
     LFCM_Rotate,    // 0x0001
     LFCM_TimeStamp  // 0x0002
 };
+
 enum TeamId
 {
     TeamNeutral, // 0x0000
@@ -180,11 +194,13 @@ enum TeamId
     Team16,      // 0x0010
     TeamIdCount  // 0x0011
 };
+
 class Asset : public DataContainer
 {
 public:
     char* Name; // 0x0018
 };
+
 enum LocalPlayerViewId
 {
     LocalPlayerViewId_RootView,  // 0x0000
@@ -195,6 +211,7 @@ enum LocalPlayerViewId
     LocalPlayerViewId_Custom4,   // 0x0005
     LocalPlayerViewId_Count      // 0x0006
 };
+
 enum ViewDefinitionType
 {
     ViewType_FullScreen,                  // 0x0000
@@ -204,6 +221,7 @@ enum ViewDefinitionType
     ViewType_AutoQuadrant,                // 0x0004
     ViewType_Custom                       // 0x0005
 };
+
 struct ViewDefinition
 {
     LocalPlayerViewId ViewId;    // 0x0000
@@ -217,6 +235,7 @@ struct ViewDefinition
     bool NormalizedSize;         // 0x0020
     char _0x0021[3];             // 0x0021
 };
+
 enum LocalPlayerId
 {
     LocalPlayerId_0,      // 0x0000
@@ -231,18 +250,32 @@ enum LocalPlayerId
     LocalPlayerId_All,    // 0x0009
     LocalPlayerId_Invalid // 0x000A
 };
+
+enum LogLevelType
+{
+    LogLevel_Default,
+    LogLevel_Fatal,
+    LogLevel_Error,
+    LogLevel_Warn,
+    LogLevel_Info,
+    LogLevel_Debug,
+    LogLevel_Trace,
+};
+
 struct PlayerViewDefinition
 {
     ViewDefinition* Views;       // 0x0000
     LocalPlayerId LocalPlayerId; // 0x0008
     char _0x000C[4];             // 0x000C
 };
+
 class GameModeViewDefinition : public Asset
 {
 public:
     char* GameModeName;                    // 0x0020
     PlayerViewDefinition* ViewDefinitions; // 0x0028
 };
+
 class GameSettingsComponent : public Asset
 {};
 class VersionData : public Asset
@@ -256,24 +289,29 @@ public:
     char* DataBranchId; // 0x0040
     char* GameName;     // 0x0048
 };
+
 class SubWorldInclusionCriterion : public DataContainer
 {
 public:
     char** Options; // 0x0018
     char* Name;     // 0x0020
 };
+
 class SubWorldInclusion : public Asset
 {
 public:
     SubWorldInclusionCriterion** Criteria; // 0x0020
 };
+
 class SubViewData : public DataContainer
 {};
+
 class PlayerViewData : public DataContainer
 {
 public:
     SubViewData** SubViews; // 0x0018
 };
+
 class PlayerData : public Asset
 {
 public:
@@ -303,6 +341,54 @@ class PersistenceSettings : SystemSettings
 {
 public:
     Guid PersistenceConfigurationGuid;
+};
+
+class OnlineSettings : public SystemSettings
+{
+public:
+    BackendType Backend;           // 0x00
+    BackendType PeerBackend;       // 0x04
+    OnlineEnvironment Environment; // 0x08
+    void* Provider;                // 0x10
+    __int64 Platforms;             // 0x18
+    char* ServiceNameOverride;     // 0x20
+    LogLevelType LogLevel;         // 0x28
+    int32_t BlazeLogLevel;         // 0x2C
+    int32_t DirtySockLogLevel;     // 0x30
+    void* RichPresenceData;        // 0x38
+    void* LicenseConfig;
+    char* MatchmakingScenario;
+    char* MatchmakingScenarioWithLevel;
+    char* Region;
+    char* Country;
+    char* PingSite;
+    char* MatchmakingToken;
+    uint32_t NegativeUserCacheRefreshPeriod;
+    char* ServerLoginEmail;
+    char* ServerLoginPassword;
+    char* ServerLoginPersonaName;
+    int32_t BlazeServerConnectionTimeout;
+    int32_t BlazeServerTimeout;
+    int32_t BlazeClientConnectionTimeout;
+    int32_t BlazeClientTimeout;
+    int32_t PeerPort;
+    uint32_t BlazeCachedUserRefreshInterval;
+    int32_t DirtySockServerPacketQueueCapacity;
+    uint32_t MinPlayerCapacity;
+    uint32_t MaxPlayerCapacity;
+    uint32_t GameQueueCapacity;
+    bool AssertOnPresenceRequestFailures;
+    bool ClientIsPresenceEnabled;
+    bool ServerIsPresenceEnabled;
+    bool IsSecure;
+    bool EnableQoS;
+    bool WaitForQoS;
+    bool ServerIsReconfigurable;
+    bool SupportHostMigration;
+    bool ServerAllowAnyReputation;
+    bool DirtySockVoipEnabled;
+    bool MatchmakingRoleEnabled;
+    bool EnableNucleusLtOverride;
 };
 
 class GameSettings : public SystemSettings
@@ -403,7 +489,7 @@ class ClientSettings : public SystemSettings
 {
 public:
     void* PadsRumbleEnabled;
-    void* PadsIndex[8];
+    void* PadsIndex;
     float JuiceDistanceThreshold;
     float JuiceTimeThreshold;
     float JuiceVehicleDistanceThreshold;

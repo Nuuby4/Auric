@@ -32,7 +32,9 @@ Server::Server()
     , m_socketManager(new SocketManager(ProtocolDirection::Clientbound, SocketSpawnInfo(false, "", "")))
     , m_running(false)
     , m_hooksRemoved(false)
-{}
+{
+    KYBER_LOG(LogLevel::Info, "[Server] Initializing");
+}
 
 Server::~Server()
 {
@@ -109,7 +111,11 @@ __int64 ServerStartHk(__int64 inst, ServerSpawnInfo* info, ServerSpawnOverrides*
     static const auto trampoline = HookManager::Call(ServerStartHk);
 
     Server* server = g_program->m_server;
-    spawnOverrides->socketManager = server->m_socketManager;
+    if (server->m_running)
+    {
+        spawnOverrides->socketManager = server->m_socketManager;
+        KYBER_LOG(LogLevel::Debug, "[Server] Initialized SocketManager");
+    }
 
     return trampoline(inst, info, spawnOverrides);
 }

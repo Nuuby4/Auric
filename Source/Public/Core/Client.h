@@ -18,6 +18,8 @@ public:
     __int64 GetGameClient();
     void ChangeState(ClientState newState);
 
+    SocketManager* m_socketManager;
+
     ClientState m_clientState;
 
     //@TODO Setup Client SocketManager here

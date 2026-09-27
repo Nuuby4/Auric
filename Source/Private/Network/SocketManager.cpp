@@ -18,7 +18,7 @@ SocketManager::SocketManager(ProtocolDirection direction, SocketSpawnInfo info)
     , m_direction(direction)
     , m_info(info)
 {
-    KYBER_LOG(LogLevel::Debug, "Created new SocketManager");
+    KYBER_LOG(LogLevel::DebugPlusPlus, "Created new SocketManager");
 }
 
 SocketManager::~SocketManager() {}

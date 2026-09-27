@@ -1,0 +1,8 @@
+cc_library(
+    name = "FastDelegate",
+    hdrs = glob([
+        "FastDelegate/*.h",
+    ]),
+    includes = ["FastDelegate"],
+    visibility = ["//visibility:public"],
+)

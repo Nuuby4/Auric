@@ -18,11 +18,14 @@ namespace Kyber
 {
 Client::Client()
     : m_clientState(ClientState_None)
+    , m_socketManager(new SocketManager(ProtocolDirection::Serverbound, SocketSpawnInfo(false, "", "")))
 {
+   Settings<OnlineSettings>("Online")->MatchmakingScenario = "DevUltraQuick";
+
     KYBER_LOG(LogLevel::Info, "[Client] Initializing");
 }
 
-__int64 ClientChangeStateHk(__int64 inst, ClientState currentClientState, ClientState lastClientState)
+__int64 ClientChangeStateHk(GameClient* inst, ClientState currentClientState, ClientState lastClientState)
 {
     static const auto trampoline = HookManager::Call(ClientChangeStateHk);
 
@@ -57,15 +60,15 @@ __int64 ClientChangeStateHk(__int64 inst, ClientState currentClientState, Client
     return trampoline(inst, currentClientState, lastClientState);
 }
 
-bool ClientInitNetworkHk(__int64 inst, bool singleplayer, bool localhost, bool coop, bool hosted)
+bool ClientInitNetworkHk(GameClient* client, bool singleplayer, bool localhost, bool coop, bool hosted)
 {
     static const auto trampoline = HookManager::Call(ClientInitNetworkHk);
     if (g_program->m_server->m_running || strlen(Settings<ClientSettings>("Client")->ServerIp) > 0)
     {
-        *reinterpret_cast<__int64*>(inst + 0xB8) =
-            reinterpret_cast<__int64>(new SocketManagerCreator(g_program->m_server->m_socketSpawnInfo));
+        client->m_socketManagerCreator =
+            new SocketManagerCreator(&g_program->m_client->m_socketManager, g_program->m_server->m_socketSpawnInfo);
     }
-    return trampoline(inst, singleplayer, localhost, coop, hosted);
+    return trampoline(client, singleplayer, localhost, coop, hosted);
 }
 
 void ClientConnectToAddressHk(__int64 inst, const char* ipAddress, const char* serverPassword)
@@ -82,14 +85,9 @@ void ClientConnectToAddressHk(__int64 inst, const char* ipAddress, const char* s
     }
 }
 
-__int64 Client::GetGameClient()
-{ 
-    return *reinterpret_cast<__int64*>(*reinterpret_cast<__int64*>(((__int64 (*)(void))OFFSET_GET_CLIENT_INSTANCE)() + 0x20) + 0x28);
-}
-
 void Client::ChangeState(ClientState newState)
 {
-    ClientChangeStateHk(GetGameClient(), newState, m_clientState);
+    ClientChangeStateHk(GameClient::Get(), newState, m_clientState);
 }
 
 void Client::Initialize()
