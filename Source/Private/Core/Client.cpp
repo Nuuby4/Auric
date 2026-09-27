@@ -71,17 +71,17 @@ bool ClientInitNetworkHk(GameClient* client, bool singleplayer, bool localhost, 
     return trampoline(client, singleplayer, localhost, coop, hosted);
 }
 
-void ClientConnectToAddressHk(__int64 inst, const char* ipAddress, const char* serverPassword)
+void ClientConnectToAddressHk(GameClient* client, const char* ipAddress, const char* serverPassword)
 {
     static const auto trampoline = HookManager::Call(ClientConnectToAddressHk);
     SocketSpawnInfo info = g_program->m_server->m_socketSpawnInfo;
     if (info.isProxied)
     {
-        trampoline(inst, (std::string(info.proxyAddress) + ":25200").c_str(), serverPassword);
+        trampoline(client, (std::string(info.proxyAddress) + ":25200").c_str(), serverPassword);
     }
     else
     {
-        trampoline(inst, ipAddress, serverPassword);
+        trampoline(client, ipAddress, serverPassword);
     }
 }
 

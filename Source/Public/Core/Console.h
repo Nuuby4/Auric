@@ -69,7 +69,9 @@ public:
     }
 
     ConsoleStream stream()
-    { return ConsoleStream(rawArguments, " "); }
+    { 
+        return ConsoleStream(rawArguments, " ");
+    }
 };
 
 typedef void (*StaticConsoleMethodPtr_t)(ConsoleContext&);

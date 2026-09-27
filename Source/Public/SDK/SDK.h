@@ -325,7 +325,7 @@ public:
     static GameClient* Get()
     {
         return *reinterpret_cast<GameClient**>(
-            *reinterpret_cast<uintptr_t*>(reinterpret_cast<uintptr_t(*)()>(0x14659DE50)() + 0x20) + 0x28);
+            *reinterpret_cast<uintptr_t*>(reinterpret_cast<uintptr_t (*)()>(0x143B9F260)() + 0x38) + 0x20);
     }
 };
 

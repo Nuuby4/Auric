@@ -20,15 +20,36 @@ void Console::RegisterConsoleCommand(StaticConsoleMethodPtr_t func, const char* 
     ConsoleRegistry_registerConsoleMethods("Auric", method, 1);
 }
 
+void LoadLevelCommand(ConsoleContext& cc)
+{
+    auto stream = cc.stream();
+    std::string levelPath;
+    std::string gamemode;
+    stream >> levelPath >> gamemode;
+
+    if (g_program->m_server->m_running)
+    {
+        g_program->m_server->LoadLevel(levelPath.c_str(), gamemode.c_str(), "");
+    }
+    else
+    {
+        g_program->m_server->Start(levelPath.c_str(), gamemode.c_str(), 40, SocketSpawnInfo(false, "", ""));
+    }
+}
+
 void SetTeamCommand(ConsoleContext& cc)
 {
+    if (!g_program->m_server->m_running)
+    {
+        cc << "This is a server command, start a server to use it!";
+    }
+
     auto stream = cc.stream();
     std::string playerName;
     int team;
     stream >> playerName >> team;
 
     ServerPlayer* player = ServerGameContext::Get()->GetPlayerManager()->GetPlayer(playerName.c_str());
-
     if (player == nullptr)
     {
         cc << "Couldn't find player " << playerName;
@@ -36,16 +57,14 @@ void SetTeamCommand(ConsoleContext& cc)
     }
 
     player->SetTeam(team);
-
     cc << "Set " << playerName << " to team " << team;
-
-    KYBER_LOG(LogLevel::Debug, "Set " << playerName << " To Team " << team);
 }
 
 Console::Console()
 {
     KYBER_LOG(LogLevel::Debug, "[Console] Initializing Console Commands");
 
-    RegisterConsoleCommand(&SetTeamCommand, "SetTeam", "<player> <team>");
+    RegisterConsoleCommand(&LoadLevelCommand, "LoadLevel", "<LevelPath> <GameMode>");
+    RegisterConsoleCommand(&SetTeamCommand, "SetTeam", "<Player> <Team>");
 }
 } // namespace Kyber
