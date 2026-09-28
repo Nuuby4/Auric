@@ -159,9 +159,22 @@ void MessageManagerDispatchMessageHk(void* inst, Message* message)
     trampoline(inst, message);
 }
 
+__int64 ServerPlayerSetUnlocksHk(ServerPlayer* player, FBBitArray* bitArray)
+{
+    static const auto trampoline = HookManager::Call(ServerPlayerSetUnlocksHk);
+
+    KYBER_LOG(LogLevel::DebugPlusPlus, "[Persistence] Initializing Unlock Array for " << player->m_name);
+
+    bitArray->SetAllBits();
+
+    return trampoline(player, bitArray);
+}
+
 HookTemplate program_hook_offsets[] = { 
     { OFFSET_GET_SETTINGS_OBJECT, GetSettingsObjectHk }, 
-    { OFFSET_MESSAGEMANAGERDISPATCHMESSAGE, MessageManagerDispatchMessageHk } 
+    { OFFSET_MESSAGEMANAGERDISPATCHMESSAGE, MessageManagerDispatchMessageHk },
+    // @TODO move to Persistence Manager
+    { HOOK_OFFSET(0x143CBE770), ServerPlayerSetUnlocksHk }
 };
 
 void Program::InitializeGamePatches()

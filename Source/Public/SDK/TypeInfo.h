@@ -142,7 +142,7 @@ enum OnlineEnvironment
 class DataContainer
 {
 public:
-    char _0x000[24]; // 0x0000
+    char _0x000[0x10]; // 0x0000
 };
 
 enum GamePlatform
@@ -162,6 +162,7 @@ enum GamePlatform
 class SystemSettings : public DataContainer
 {
 public:
+    char pad_0010[0x8];
     GamePlatform Platform; // 0x0018
     char _0x001C[4];       // 0x001C
 };
@@ -278,6 +279,7 @@ public:
 
 class GameSettingsComponent : public Asset
 {};
+
 class VersionData : public Asset
 {
 public:
@@ -946,5 +948,73 @@ public:
     int32_t DefaultFilterMethod;                       // 0x0090
     bool InProcReplicationEnabled;                     // 0x0094
     char _0x0095[3];                                   // 0x0095
+};
+
+enum ForceCardType
+{
+    ForceCardType_Passive = 0,
+    ForceCardType_Time = 1,
+    ForceCardType_Item = 2,
+    ForceCardType_ActiveWeapon = 3,
+    ForceCardType_InactiveWeapon = 4,
+    ForceCardType_WeaponModifier = 5,
+    ForceCardType_CardModifier = 6
+};
+
+enum ForceCardCategory
+{
+    ForceCardCategory_AssetCard = 0,
+    ForceCardCategory_ChargeCard = 1,
+    ForceCardCategory_UltimateCard = 2,
+    ForceCardCategory_SkillCard = 3,
+    ForceCardCategory_VehicleCard = 4,
+    ForceCardCategory_VehicleAbilityCard = 5,
+    ForceCardCategory_HeroSpawnCard = 6,
+    ForceCardCategory_HeroAbilityCard = 7,
+    ForceCardCategory_Dummy = 8
+};
+
+enum UnlockAvailability
+{
+    UnlockAvailability_All = 0,
+    UnlockAvailability_HumanPlayerOnly = 1,
+    UnlockAvailability_AIOnly = 2
+};
+
+class DataContainerPolicyAsset : public Asset
+{};
+
+class UnlockAssetBase : public DataContainerPolicyAsset
+{
+    void* UnlockUserData;
+    char* DebugUnlockId;
+    uint32_t Identifier;
+    uint32_t UnlockScore;
+    UnlockAssetBase* NextLevelUnlockAsset;
+    UnlockAvailability AvailableForPlayer;
+    bool AutoAvailable;
+    bool HiddenInProgression;
+};
+
+class ForceCardAsset : public DataContainerPolicyAsset
+{
+    UnlockAssetBase* Unlock;
+    ForceCardCategory CardCategory;
+    ForceCardAsset* NextLevelCard;
+    ForceCardAsset* PreviousLevelCard;
+    ForceCardType CardType;
+    float ReadyTime;
+    float ActivationTime;
+    float ActiveTime;
+    float RechargeTime;
+    float MaxRechargeDelay;
+    uint32_t BoostCharges;
+    uint32_t PartnerBoostCharges;
+    float MinTimeForDeactivated;
+    bool IgnoreNextLevelCardUnlocks;
+    bool RequireHoldDuringActivationTime;
+    bool IsBoostCard;
+    bool ForceRechargeUnusedWeapon;
+    bool IsVehicleCard;
 };
 } // namespace Kyber

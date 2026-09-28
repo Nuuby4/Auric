@@ -1,10 +1,26 @@
+// Copyright Nuuby. All Rights Reserved
+
 #include <SDK/SDK.h>
+#include <SDK/TypeInfo.h>
 
 #include <Base/Log.h>
 #include <SDK/Funcs.h>
 
 namespace Kyber
 {
+TL_DECLARE_FUNC(0x1444EEDD0, bool, ForceCard_IncreaseChargeCount, ForceCardSlot* slot, int numCharges)
+TL_DECLARE_FUNC(0x144500E80, uint64_t, ForceCard_SyncChargeCount, void* a, int unk)
+
+PlayerExtentRegistration* ForceCardServerPlayerExtent::s_registration = reinterpret_cast<PlayerExtentRegistration*>(0x1427C3F38);
+
+void ForceCardServerPlayerExtent::IncreaseChargeCount(int numCharges)
+{
+    ForceCardSlot* slot = &m_slots[1];
+    if (slot->m_asset && ForceCard_IncreaseChargeCount(slot, numCharges))
+    {
+        ForceCard_SyncChargeCount(reinterpret_cast<uint8_t*>(this) + 0x38, 1);
+    }
+}
 
 const char* TypeInfo::getName() const
 { 

@@ -32,7 +32,13 @@ namespace Kyber
     inline returnType name(__VA_ARGS__)                                                                                                     \
     {                                                                                                                                       \
         return reinterpret_cast<returnType(__fastcall*)(void*, __VA_ARGS__)>(ptr)(this, STRIP_PARENS args);                                 \
-    }                                                                                                                                       //\
+    }   
+    
+#define AU_DECLARE_GAMEMEMBERFUNC_NOARGS(ptr, returnType, name)                                                                            \
+    inline returnType name()                                                                                                                    \
+{                                                                                                                                           \
+    return reinterpret_cast<returnType(__fastcall*)(void*)>(ptr)(this);                                                                     \
+}
 
 struct Guid
 {
@@ -442,6 +448,76 @@ public:
     bool isKindOf(const TypeInfo* other) const;
 }; // Size: 0x0008
 
+class FBBitArray
+{
+public:
+    FBBitArray();
+    FBBitArray(uint32_t bitCount, MemoryArena* arena = nullptr);
+    virtual ~FBBitArray() = default;
+
+    AU_DECLARE_GAMEMEMBERFUNC(0x143364CD0, void*, Init, (bitCount, arena), uint32_t bitCount, MemoryArena* arena)
+    AU_DECLARE_GAMEMEMBERFUNC(0x143360BB0, void*, Destroy, (arena), MemoryArena* arena)
+    AU_DECLARE_GAMEMEMBERFUNC_NOARGS(0x143365D20, void, Reset)
+    AU_DECLARE_GAMEMEMBERFUNC_NOARGS(0x143366100, void, SetAllBits)
+
+    uint32_t* m_bits;       // 0x08
+    uint32_t m_defaultBits; // 0x10
+    uint32_t m_bitCount;    // 0x14
+    int32_t m_dwordCount;   // 0x18
+
+private:
+    AU_DECLARE_GAMEMEMBERFUNC_NOARGS(0x1433605E0, void*, Ctor)
+}; // Size: 0x20
+
+class PlayerExtent : public TypeObject
+{};
+
+struct PlayerExtentRegistration
+{
+    using ctorFunc_t = PlayerExtent* (*)(PlayerExtent*);
+    using dtorFunc_t = ctorFunc_t;
+
+    uint32_t offset;
+    uint32_t size;
+    uint32_t alignment;
+    char pad_0C[4];
+    const char* typeName;
+    ctorFunc_t ctorFunc;
+    dtorFunc_t dtorFunc;
+    void* nullFunction;
+    PlayerExtentRegistration* next;
+};
+
+class ServerPlayer;
+class ServerPlayerExtent : public PlayerExtent
+{};
+
+#define AU_DECLARE_SERVERPLAYEREXTENT_MEMBERS()                                                                                            \
+    static PlayerExtentRegistration* s_registration;                                                                                       \
+    ServerPlayer* GetPlayer()                                                                                                              \
+    {                                                                                                                                      \
+        return reinterpret_cast<ServerPlayer*>(reinterpret_cast<uint8_t*>(this) - s_registration->offset);                                 \
+    }
+
+struct ForceCardSlot
+{
+    class ForceCardAsset* m_asset;
+    char pad_08[0x10];
+    float m_cooldown;
+    char pad_1C[0xC];
+};
+
+class ForceCardServerPlayerExtent : public ServerPlayerExtent
+{
+public:
+    AU_DECLARE_SERVERPLAYEREXTENT_MEMBERS();
+
+    char pad_0000[0x50];
+    ForceCardSlot m_slots[4];
+
+    void IncreaseChargeCount(int numCharges);
+};
+
 class LevelSetupOptions
 {
 public:
@@ -478,6 +554,12 @@ struct ServerCharacter
     char pad_0000[0x7B8];
 };
 
+#define AU_DECLARE_SERVERPLAYEREXTENT(name)                                                                                                \
+    inline name* Get##name() const                                                                                                         \
+    {                                                                                                                                      \
+        return reinterpret_cast<name*>(GetExtent(name::s_registration));                                                                   \
+    }
+
 class ServerPlayer
 {
 public:
@@ -494,8 +576,14 @@ public:
     char pad_0004[0xD8];
     ServerCharacter* m_serverCharacter;     // 0x2C88
 
+    ServerPlayerExtent* GetExtent(const PlayerExtentRegistration* registrar) const
+    {
+        return reinterpret_cast<ServerPlayerExtent*>(reinterpret_cast<uintptr_t>(this) + registrar->offset);
+    }
+
     AU_DECLARE_GAMEMEMBERFUNC(0x143CBE6F0, void, SetTeam, (teamId), int teamId)
-    //bool Teleport(const LinearTransform& transform);
+
+    AU_DECLARE_SERVERPLAYEREXTENT(ForceCardServerPlayerExtent)
 };
 
 class ServerPlayerManager

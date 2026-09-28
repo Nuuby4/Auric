@@ -46,25 +46,19 @@ void Server::Start(const char* level, const char* mode, int maxPlayers, SocketSp
     EnableGameHooks();
 
     ClientLobbyInformation* clientLobby = ClientLobbyInformation::Get();
-
-    ClientSettings* clientSettings = Settings<ClientSettings>("Client");
-    GameSettings* gameSettings = Settings<GameSettings>("Game");
-    PersistenceSettings* persistenceSettings = SettingsLookup<PersistenceSettings>(OFFSET_TYPEINFO_PERSISTENCESETTINGS);
-
-    clientSettings->ServerIp = "";
-
     clientLobby->info->playerCountTeam1 = maxPlayers;
     clientLobby->info->playerCountTeam2 = maxPlayers;
     clientLobby->info->gamemode = mode;
     clientLobby->info->level = level;
 
+    ClientSettings* clientSettings = Settings<ClientSettings>("Client");
+    clientSettings->ServerIp = "";
+
+    GameSettings* gameSettings = Settings<GameSettings>("Game");
     gameSettings->Level = const_cast<char*>(level);
     gameSettings->StartPoint = "Offline_WalkerAssault";
     std::string gameMode = "GameMode=" + std::string(mode);
     gameSettings->DefaultLayerInclusion = _strdup(gameMode.c_str());
-
-    Guid newGuid = Guid::FromString("b0e13818-7192-e311-873e-d06628a59c0a");
-    persistenceSettings->PersistenceConfigurationGuid = newGuid;
 
     info.serverMode = "SERVER";
     m_socketSpawnInfo = info;
