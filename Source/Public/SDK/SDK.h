@@ -248,6 +248,8 @@ public:
     char pad_0003[0x3];
     uint32_t teamId; // 2BAC
     char pad_0000[0x108];
+
+    void ClientPlayer::LogExtents();
 };
 
 class ClientPlayerManager
@@ -575,6 +577,9 @@ public:
     uint32_t m_teamId;                      // 0x2BAC
     char pad_0004[0xD8];
     ServerCharacter* m_serverCharacter;     // 0x2C88
+
+    void LogExtents();
+    TypeObject* GetExtent(const char* name);
 
     ServerPlayerExtent* GetExtent(const PlayerExtentRegistration* registrar) const
     {

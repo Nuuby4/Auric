@@ -22,6 +22,55 @@ void ForceCardServerPlayerExtent::IncreaseChargeCount(int numCharges)
     }
 }
 
+void ClientPlayer::LogExtents()
+{
+    KYBER_LOG(LogLevel::Info, "----BEGIN CLIENT PLAYER EXTENT DEBUG----");
+    PlayerExtentRegistration* reg = *(PlayerExtentRegistration**)0x142AEA880;
+    while (reg)
+    {
+        if (reg->typeName != nullptr)
+        {
+            KYBER_LOG(LogLevel::Info, reg->typeName << " offset: " << std::hex << reg->offset);
+            reg = reg->next;
+        }
+    }
+    KYBER_LOG(LogLevel::Info, "----END CLIENT PLAYER EXTENT DEBUG----");
+}
+
+
+void ServerPlayer::LogExtents()
+{
+    KYBER_LOG(LogLevel::Info, "----BEGIN SERVER PLAYER EXTENT DEBUG----");
+    PlayerExtentRegistration* reg = *(PlayerExtentRegistration**)0x142C24110;
+    while (reg)
+    {
+        if (reg->typeName != nullptr)
+        {
+            KYBER_LOG(LogLevel::Info, reg->typeName << " offset: " << std::hex << reg->offset);
+            reg = reg->next;
+        }
+    }
+    KYBER_LOG(LogLevel::Info, "----END SERVER PLAYER EXTENT DEBUG----");
+}
+
+TypeObject* ServerPlayer::GetExtent(const char* name)
+{
+    PlayerExtentRegistration* reg = (PlayerExtentRegistration*)0x142AEA880;
+    while (reg)
+    {
+        TypeObject* extent = (TypeObject*)((__int64)this + reg->offset);
+        const char* typeName = reg->typeName;
+        reg = reg->next;
+
+        if (typeName && strcmp(name, typeName) == 0)
+        {
+            return extent;
+        }
+    }
+
+    return nullptr;
+}
+
 const char* TypeInfo::getName() const
 { 
 	return typeInfoData->name; 
