@@ -26,6 +26,8 @@
 
 namespace Kyber
 {
+#define FB_CLIENT_ARENA (reinterpret_cast<MemoryArena*>(0x142A3B390))
+#define FB_SERVER_ARENA (reinterpret_cast<MemoryArena*>(0x142A3CEB0))
 
 #define STRIP_PARENS(...) __VA_ARGS__
 #define AU_DECLARE_GAMEMEMBERFUNC(ptr, returnType, name, args, ...)                                                                         \
@@ -234,89 +236,6 @@ struct ClientLobbyInformation
     }
 };
 
-class ClientPlayer
-{
-public:
-    void* vtable;                     // 0x0000
-    class PlayerData* m_data;         // 0x0008
-    class MemoryArena* m_memoryArena; // 0x0010
-    char* m_name;                     // 0x0018
-    char pad_0020[0x14];              // 0x0020
-    uint64_t m_id;
-    char pad_003C[0x2B68];
-    bool isAiPlayer;
-    char pad_0003[0x3];
-    uint32_t teamId; // 2BAC
-    char pad_0000[0x108];
-
-    void ClientPlayer::LogExtents();
-};
-
-class ClientPlayerManager
-{
-public:
-    char pad_0000[8];
-    class PlayerData* m_playerData;
-    uint32_t m_maxPlayerCount;      // 0x0010
-    uint32_t m_playerCountBitCount; // 0x0014
-    uint32_t m_playerIdBitCount;    // 0x0018
-    char pad_001C[0xBC];
-    // Technically the players, spectators, have their own struct but they're similar enough to where I can use the ServerPlayer
-    eastl::fixed_vector<ClientPlayer*, 64> m_players;
-    eastl::fixed_vector<ClientPlayer*, 64> m_spectators;
-    eastl::fixed_vector<ClientPlayer*, 64> m_localPlayers;
-
-    ClientPlayer* GetPlayerById(__int64 id)
-    {
-        for (const auto& player : m_players)
-        {
-            if (player == nullptr)
-                continue;
-
-            if (player->m_id == id)
-                return player;
-        }
-        return nullptr;
-    }
-};
-
-class ClientConnection
-{
-public:
-    char pad_0[0x38];
-    void* client_connection;
-};
-
-class ClientGameContext
-{
-public:
-    char pad_0000[0x8];                 // 0x0
-    void* m_realm;                      // 0x8
-    void* messageManager;               // 0x10
-    char pad_0018[0x10];                // 0x20
-    __int64 physicsManager;             // 0x28
-    char pad_0030[0x8];                 // 0x30
-    void* clientLevel;                  // 0x38
-    char pad_0040[0x28];                // 0x60
-    ClientPlayerManager* playerManager; // 0x68
-    ClientConnection* client;
-
-    ClientPlayerManager* GetPlayerManager()
-    {
-        if (this != nullptr && this->playerManager != nullptr)
-        {
-            return this->playerManager;
-        }
-
-        return nullptr;
-    }
-
-    static ClientGameContext* Get()
-    { 
-        return *(ClientGameContext**)0x142AE8080;
-    }
-};
-
 class SocketManagerCreator;
 
 class GameClient
@@ -325,7 +244,7 @@ public:
     void* vtable;
     class GameSettings* m_gameSettings;       // 0x8
     char pad_0010[0x28];                      // 0x10
-    ClientGameContext* m_clientGameContext;   // 0x38
+    class ClientGameContext* m_clientGameContext;   // 0x38
     class ClientSettings* m_clientSettings;   // 0x40
     char pad_0048[0x70];                      // 0x48
     SocketManagerCreator* m_socketManagerCreator;           // 0xB8
@@ -372,9 +291,15 @@ protected:
 class Message : public TypeObject
 {
 public:
-    const int category;
-    const int type;
-};
+    uint32_t category;
+    uint32_t type;
+    enum LocalPlayerId localPlayerId;
+    char pad_0018[24];
+    bool ownedByMessageManager;
+    char pad_0028[3];
+private:
+    AU_DECLARE_GAMEMEMBERFUNC_NOARGS(0x1432FCFD0, void*, Ctor)
+}; // Size: 0x30
 
 enum TypeCodeEnum : uint16_t
 {
@@ -454,11 +379,11 @@ class FBBitArray
 {
 public:
     FBBitArray();
-    FBBitArray(uint32_t bitCount, MemoryArena* arena = nullptr);
+    FBBitArray(uint32_t bitCount, void* arena = nullptr);
     virtual ~FBBitArray() = default;
 
-    AU_DECLARE_GAMEMEMBERFUNC(0x143364CD0, void*, Init, (bitCount, arena), uint32_t bitCount, MemoryArena* arena)
-    AU_DECLARE_GAMEMEMBERFUNC(0x143360BB0, void*, Destroy, (arena), MemoryArena* arena)
+    AU_DECLARE_GAMEMEMBERFUNC(0x143364CD0, void*, Init, (bitCount, arena), uint32_t bitCount, void* arena)
+    AU_DECLARE_GAMEMEMBERFUNC(0x143360BB0, void*, Destroy, (arena), void* arena)
     AU_DECLARE_GAMEMEMBERFUNC_NOARGS(0x143365D20, void, Reset)
     AU_DECLARE_GAMEMEMBERFUNC_NOARGS(0x143366100, void, SetAllBits)
 
@@ -501,6 +426,17 @@ class ServerPlayerExtent : public PlayerExtent
         return reinterpret_cast<ServerPlayer*>(reinterpret_cast<uint8_t*>(this) - s_registration->offset);                                 \
     }
 
+class ClientPlayer;
+class ClientPlayerExtent : public PlayerExtent
+{};
+
+#define AU_DECLARE_CLIENTPLAYEREXTENT_MEMBERS()                                                                                            \
+    static PlayerExtentRegistration* s_registration;                                                                                       \
+    ClientPlayer* GetPlayer()                                                                                                              \
+    {                                                                                                                                      \
+        return reinterpret_cast<ClientPlayer*>(reinterpret_cast<uint8_t*>(this) - s_registration->offset);                                 \
+    }
+
 struct ForceCardSlot
 {
     class ForceCardAsset* m_asset;
@@ -518,6 +454,46 @@ public:
     ForceCardSlot m_slots[4];
 
     void IncreaseChargeCount(int numCharges);
+};
+
+class OnlineServerPlayerExtent : public ServerPlayerExtent
+{
+public:
+    AU_DECLARE_SERVERPLAYEREXTENT_MEMBERS();
+    char pad_0008[0x30];
+    uint64_t m_currentPartner;
+
+    void OnlineServerPlayerExtent::SetPartner(ServerPlayer* newPartner);
+};
+
+class PersistenceServerPlayerExtent : public ServerPlayerExtent
+{
+public:
+    AU_DECLARE_SERVERPLAYEREXTENT_MEMBERS();
+    char pad_0008[0x28];
+    uint32_t m_rank;        // 0x30
+    uint32_t m_kills;       // 0x34
+    uint32_t m_deaths;      // 0x38
+    uint32_t m_score;       // 0x3C
+    uint32_t m_assists;     // 0x40
+    uint32_t m_unk;         // 0x44
+
+
+    AU_DECLARE_GAMEMEMBERFUNC(0x14445BA30, void, SetRank, (rank), uint32_t rank)
+    AU_DECLARE_GAMEMEMBERFUNC(0x14445BA60, void, SetScore, (score), uint32_t score)
+    AU_DECLARE_GAMEMEMBERFUNC(0x14445BA00, void, SetAssists, (assists), uint32_t assists) // maybe
+    AU_DECLARE_GAMEMEMBERFUNC(0x14445B940, void, SetKills, (kills), uint32_t kills)
+    AU_DECLARE_GAMEMEMBERFUNC(0x14445B8B0, void, SetUnk, (something), uint32_t something)
+    AU_DECLARE_GAMEMEMBERFUNC(0x14445B8F0, void, SetDeaths, (deaths), uint32_t deaths)
+};
+
+class PersistenceClientPlayerExtent : public ClientPlayerExtent
+{
+public:
+    AU_DECLARE_CLIENTPLAYEREXTENT_MEMBERS();
+
+    char pad_[0x70];
+    uint32_t m_rank;
 };
 
 class LevelSetupOptions
@@ -589,6 +565,8 @@ public:
     AU_DECLARE_GAMEMEMBERFUNC(0x143CBE6F0, void, SetTeam, (teamId), int teamId)
 
     AU_DECLARE_SERVERPLAYEREXTENT(ForceCardServerPlayerExtent)
+    AU_DECLARE_SERVERPLAYEREXTENT(OnlineServerPlayerExtent)
+    AU_DECLARE_SERVERPLAYEREXTENT(PersistenceServerPlayerExtent)
 };
 
 class ServerPlayerManager
@@ -632,6 +610,93 @@ public:
     ServerPlayerManager* GetPlayerManager()
     {
         return m_serverPlayerManager;
+    }
+};
+
+class ClientPlayer
+{
+public:
+    void* vtable;                     // 0x0000
+    class PlayerData* m_data;         // 0x0008
+    class MemoryArena* m_memoryArena; // 0x0010
+    char* m_name;                     // 0x0018
+    char pad_0020[0x14];              // 0x0020
+    uint64_t m_id;
+    char pad_003C[0x2B68];
+    bool isAiPlayer;
+    char pad_0003[0x3];
+    uint32_t teamId; // 2BAC
+    char pad_0000[0x108];
+
+    void ClientPlayer::LogExtents();
+
+    ClientPlayerExtent* GetExtent(const PlayerExtentRegistration* registrar) const
+    { return reinterpret_cast<ClientPlayerExtent*>(reinterpret_cast<uintptr_t>(this) + registrar->offset); }
+
+    AU_DECLARE_SERVERPLAYEREXTENT(PersistenceClientPlayerExtent);
+};
+
+class ClientPlayerManager
+{
+public:
+    char pad_0000[8];
+    class PlayerData* m_playerData;
+    uint32_t m_maxPlayerCount;      // 0x0010
+    uint32_t m_playerCountBitCount; // 0x0014
+    uint32_t m_playerIdBitCount;    // 0x0018
+    char pad_001C[0xBC];
+    eastl::fixed_vector<ClientPlayer*, 64> m_players;
+    eastl::fixed_vector<ClientPlayer*, 64> m_spectators;
+    eastl::fixed_vector<ClientPlayer*, 64> m_localPlayers;
+
+    ClientPlayer* GetPlayerById(__int64 id)
+    {
+        for (const auto& player : m_players)
+        {
+            if (player == nullptr)
+                continue;
+
+            if (player->m_id == id)
+                return player;
+        }
+        return nullptr;
+    }
+};
+
+class ClientConnection
+{
+public:
+    char pad_0[0x38];
+    void* client_connection;
+};
+
+class ClientGameContext
+{
+public:
+    char pad_0000[0x8];                 // 0x0
+    void* m_realm;                      // 0x8
+    void* messageManager;               // 0x10
+    char pad_0018[0x10];                // 0x20
+    __int64 physicsManager;             // 0x28
+    char pad_0030[0x8];                 // 0x30
+    void* clientLevel;                  // 0x38
+    char pad_0040[0x28];                // 0x60
+    ClientPlayerManager* playerManager; // 0x68
+    ClientConnection* client;
+
+    ClientPlayerManager* GetPlayerManager()
+    {
+        if (this != nullptr && this->playerManager != nullptr)
+        {
+            return this->playerManager;
+        }
+
+        return nullptr;
+    }
+
+    static ClientGameContext* Get()
+    { 
+        return *(ClientGameContext**)0x142AE8080;
     }
 };
 

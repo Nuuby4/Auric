@@ -22,4 +22,7 @@ TL_DECLARE_FUNC(0x143CD4180, __int64, ServerPeer_ConnectionForPlayer, __int64 in
 TL_DECLARE_FUNC(0x143CB0C50, ServerPlayer*, ServerPlayerManager_createPlayer, ServerPlayerManager* playerManager, uint64_t playerId, uint32_t localPlayerId, uint32_t connectionId, bool isSpectator);
 TL_DECLARE_FUNC(0x143CAE830, void, ServerPlayerManager_addPlayer, ServerPlayerManager* playerManager, ServerPlayer* player, const char* nickname);
 TL_DECLARE_FUNC(0x143CB1CB0, void, ServerPlayerManager_deletePlayer, ServerPlayerManager* playerManager, ServerPlayer* player);
+
+// @TODO Make this like Kyber V2
+TL_DECLARE_FUNC(0x1433305B0, void*, MemoryArena_alloc, int64_t size, MemoryArena* arena);
 } // namespace Kyber

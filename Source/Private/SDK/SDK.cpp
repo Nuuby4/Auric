@@ -10,8 +10,14 @@ namespace Kyber
 {
 TL_DECLARE_FUNC(0x1444EEDD0, bool, ForceCard_IncreaseChargeCount, ForceCardSlot* slot, int numCharges)
 TL_DECLARE_FUNC(0x144500E80, uint64_t, ForceCard_SyncChargeCount, void* a, int unk)
+TL_DECLARE_FUNC(0x14444B100, void, OnlinePlayerExtent_SetPartner, void* inst, uint64_t id, bool unk)
+TL_DECLARE_FUNC(0x145565500, __int64, ClientPersistenceExtentUpdatedMessage_ctor, void* msgArena);
 
 PlayerExtentRegistration* ForceCardServerPlayerExtent::s_registration = reinterpret_cast<PlayerExtentRegistration*>(0x1427C3F38);
+PlayerExtentRegistration* OnlineServerPlayerExtent::s_registration = reinterpret_cast<PlayerExtentRegistration*>(0x1427C3B48);
+PlayerExtentRegistration* PersistenceServerPlayerExtent::s_registration = reinterpret_cast<PlayerExtentRegistration*>(0x1427C3C18);
+
+PlayerExtentRegistration* PersistenceClientPlayerExtent::s_registration = reinterpret_cast<PlayerExtentRegistration*>(0x1427C3BE0);
 
 void ForceCardServerPlayerExtent::IncreaseChargeCount(int numCharges)
 {
@@ -20,6 +26,27 @@ void ForceCardServerPlayerExtent::IncreaseChargeCount(int numCharges)
     {
         ForceCard_SyncChargeCount(reinterpret_cast<uint8_t*>(this) + 0x38, 1);
     }
+}
+
+void OnlineServerPlayerExtent::SetPartner(ServerPlayer* newPartner)
+{
+    if (newPartner == nullptr)
+    {
+        OnlinePlayerExtent_SetPartner(this, 0, 0);
+        return;
+    }
+    
+    if (m_currentPartner != 0)
+    {
+
+        if (ServerPlayer* currentPartner = ServerGameContext::Get()->GetPlayerManager()->GetPlayer(m_currentPartner))
+        {
+            currentPartner->GetOnlineServerPlayerExtent()->SetPartner(nullptr);
+        }
+    }
+
+    OnlinePlayerExtent_SetPartner(this, newPartner->m_id, 0);
+    OnlinePlayerExtent_SetPartner(newPartner->GetOnlineServerPlayerExtent(), GetPlayer()->m_id, 0);
 }
 
 void ClientPlayer::LogExtents()
