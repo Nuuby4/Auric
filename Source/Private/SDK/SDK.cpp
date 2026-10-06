@@ -221,4 +221,25 @@ ServerPlayer* ServerPlayerManager::GetSpectator(uint64_t id)
 
     return nullptr;
 }
+
+void* EntityBase::GetEntityBus() const
+{
+    //if (IsSpatial())
+    //{
+        //return reinterpret_cast<const SpatialEntity*>(this)->m_entityBus;
+    //}
+
+    return reinterpret_cast<const NativeEntity*>(this)->m_entityBus;
+}
+
+const GameObjectData* EntityBase::GetData() const
+{
+    //if (IsSpatial())
+    //{
+        //return reinterpret_cast<const SpatialEntity*>(this)->m_data;
+    //}
+
+    return reinterpret_cast<const NativeEntity*>(this)->m_data;
+}
+
 }

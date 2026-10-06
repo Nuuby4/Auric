@@ -127,4 +127,18 @@ Console::Console()
     RegisterConsoleCommand(&LoadLevelCommand, "LoadLevel", "<LevelPath> <GameMode>");
     RegisterConsoleCommand(&SetTeamCommand, "SetTeam", "<Player> <Team>");
 }
+void Console::EnqueueCommand(const char* cmd)
+{
+    auto delegate = fastdelegate::FastDelegate<void(const char*)>([](const char* result) {
+        if (strlen(result) == 0)
+        {
+            return;
+        }
+
+        KYBER_LOG(LogLevel::Info, "[Console] " << result);
+    });
+
+    KYBER_LOG(LogLevel::Info, "[Console] > " << cmd);
+    Console_enqueueCommand(cmd, delegate);
+}
 } // namespace Kyber

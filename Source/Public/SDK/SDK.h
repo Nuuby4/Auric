@@ -17,6 +17,7 @@
 #endif
 
 #include <EASTL/fixed_vector.h>
+#include <Utilities/StringUtils.h>
 
 #include <stddef.h>
 #include <string>
@@ -41,6 +42,16 @@ namespace Kyber
 {                                                                                                                                           \
     return reinterpret_cast<returnType(__fastcall*)(void*)>(ptr)(this);                                                                     \
 }
+
+enum Realm
+{
+    Realm_Client,          // 0x0000
+    Realm_Server,          // 0x0001
+    Realm_ClientAndServer, // 0x0002
+    Realm_None,            // 0x0003
+    Realm_Pipeline,        // 0x0004
+    Realm_Count
+};
 
 struct Guid
 {
@@ -301,6 +312,50 @@ private:
     AU_DECLARE_GAMEMEMBERFUNC_NOARGS(0x1432FCFD0, void*, Ctor)
 }; // Size: 0x30
 
+typedef int32_t EventId;
+class EntityEvent : TypeObject
+{
+public:
+    enum Sender
+    {
+        Sender_External,
+        Sender_Parent,
+        Sender_Child
+    };
+
+    EntityEvent(const char* event);
+
+    EntityEvent(EventId eventId)
+        : eventId(eventId)
+        , sender(Sender_Child)
+    {}
+
+    TypeInfo* getType() const override
+    { return (TypeInfo*)0x142F95420; }
+
+    bool Is(const char* event) const
+    { return eventId == StringUtils::HashQuick(event); }
+
+    mutable EventId eventId;
+    mutable Sender sender;
+};
+
+enum ResourceCompartment : uint16_t
+{
+    ResourceCompartment_Static = 0,
+    ResourceCompartment_Frontend = 1,
+    ResourceCompartment_LoadingScreen = 2,
+    ResourceCompartment_GameStatic = 3,
+    ResourceCompartment_Game = 4,
+    ResourceCompartment_Dynamic_Begin_,
+    ResourceCompartment_Synchronized_Begin_ = ResourceCompartment_Dynamic_Begin_,
+    ResourceCompartment_Synchronized_End_ = ResourceCompartment_Synchronized_Begin_ + 2000,
+    ResourceCompartment_NonSynchronized_Begin_,
+    ResourceCompartment_NonSynchronized_End_ = ResourceCompartment_NonSynchronized_Begin_ + 1000,
+    ResourceCompartment_Count_ = ResourceCompartment_NonSynchronized_End_,
+    ResourceCompartment_Forbidden_ = ResourceCompartment_Count_,
+};
+
 enum TypeCodeEnum : uint16_t
 {
     kTypeCode_Void = 0,
@@ -374,6 +429,280 @@ public:
 
     bool isKindOf(const TypeInfo* other) const;
 }; // Size: 0x0008
+
+class DataContainer : public TypeObject
+{
+public:
+    struct GuidEntry
+    {
+        Guid guid;
+    };
+
+    enum
+    {
+        Exported = 0x1000,
+        HasGuid = 0x0100,
+    };
+
+    inline uint32_t IsExported() const
+    { 
+        return m_dcFlags & Exported;
+    }
+
+    inline const Guid* GetInstanceGuid() const
+    {
+        if ((m_dcFlags & HasGuid) == 0)
+        {
+            return nullptr;
+        }
+
+        const GuidEntry* guidEntry = reinterpret_cast<const GuidEntry*>(this) + -1;
+        return &guidEntry->guid;
+    }
+
+    inline void SetInstanceGuid(Guid& guid)
+    {
+        if ((m_dcFlags & HasGuid) == 0)
+        {
+            m_dcFlags |= HasGuid;
+        }
+
+        GuidEntry* guidEntry = reinterpret_cast<GuidEntry*>(this) + -1;
+        guidEntry->guid = guid;
+    }
+
+    inline int addRef() const
+    { 
+        return InterlockedIncrement((volatile unsigned __int32*)&m_refCount);
+    }
+
+    void release();
+
+    // Override this when necessary, this is just the base DataContainer TypeInfo
+    TypeInfo* getType() const override
+    { 
+        return m_dcType != nullptr ? m_dcType : (TypeInfo*)0x142F59D40;
+    }
+
+    TypeInfo* m_dcType = nullptr;
+    uint32_t m_refCount = 1;
+    uint16_t m_dcFlags = 0;
+    ResourceCompartment m_compartment = ResourceCompartment_Static;
+};
+
+class GameDataContainer : public DataContainer
+{};
+
+class DataBusPeer : public GameDataContainer
+{
+public:
+    uint32_t Flags;
+    char _0x001C[4];
+};
+
+class GameObjectData : public DataBusPeer
+{};
+
+class EntityData : public GameObjectData
+{
+public:
+};
+
+class EntityBase : public TypeObject
+{
+public:
+    void* m_linkPrev;
+    void* m_linkNext;
+    uint64_t m_flags;
+
+    //bool IsSpatial() const;
+    //bool IsComponent() const;
+
+    void Init();
+
+    void* GetEntityBus() const;
+    const GameObjectData* GetData() const;
+
+    void FireEvent(EntityEvent* event);
+    void Event(EntityEvent* event);
+    //KB_DECLARE_VIRTUALFUNC(5, void, PropertyChanged, (modification), struct PropertyModification* modification)
+    //KB_DECLARE_VIRTUALFUNC(5, void, PropertyChanged, (modification), const struct PropertyModification* modification)
+
+    Realm GetRealm() const
+    {
+        return Realm(m_flags & (1 << 0));
+    }
+};
+
+class NativeEntity : public EntityBase
+{
+public:
+    class EntityBus* m_entityBus;
+    const GameObjectData* m_data;
+};
+
+struct ArrayBase
+{
+    static void* emptyArrayBegin();
+};
+
+template<typename T>
+class FBArray : public ArrayBase
+{
+public:
+    T* m_data = nullptr;
+
+    FBArray()
+    {
+        reset();
+    }
+
+    void reset()
+    {
+        m_data = (T*)emptyArrayBegin();
+    }
+
+    inline void cloneFromVec(const std::vector<T>& vec)
+    {
+        init(vec.size());
+        for (int i = 0; i < vec.size(); i++)
+        {
+            m_data[i] = vec[i];
+        }
+    }
+
+    inline void init(uint32_t size)
+    {
+        if (size == 0)
+        {
+            reset();
+            return;
+        }
+
+        size_t headerSize = sizeof(uint32_t) > __alignof(T) ? sizeof(uint32_t) : __alignof(T);
+        m_data = (T*)(reinterpret_cast<uint8_t*>(FB_GLOBAL_ARENA->alloc(headerSize + size * sizeof(T))) + headerSize);
+        memset(m_data, 0, size * sizeof(T));
+
+        uint32_t* data = reinterpret_cast<uint32_t*>(reinterpret_cast<char*>(m_data));
+        data[-1] = size;
+    }
+
+    inline void extend(uint32_t amount)
+    {
+        uint32_t prevSize = size();
+        constexpr size_t headerSize = sizeof(uint32_t) > __alignof(T) ? sizeof(uint32_t) : __alignof(T);
+
+        T* dest = (T*)(reinterpret_cast<uint8_t*>(FB_GLOBAL_ARENA->alloc(headerSize + ((prevSize + amount) * sizeof(T)))) + headerSize);
+        memcpy(dest, m_data, prevSize * sizeof(T));
+        memset(dest + prevSize, 0, amount * sizeof(T));
+
+        // @TODO: free previous array (requires proper padding when alloc-ing tho)
+        // FB_GLOBAL_ARENA->free(reinterpret_cast<uint8_t*>(m_data) - headerSize);
+        if (MemoryArena* arena = ArenaMap::FindArenaForObject(this, false))
+        {
+            // cant seem to figure out which ptr its alloc'd to
+            // arena->free(reinterpret_cast<void*>((reinterpret_cast<uintptr_t>(m_data) - headerSize) & ~15ul));
+            MemoryLeakDb::AddEntry(prevSize * sizeof(T), "FBArray::extend original free fail");
+        }
+        else
+        {
+            // Leak!
+            MemoryLeakDb::AddEntry(prevSize * sizeof(T), "FBArray::extend original free fail");
+        }
+
+        m_data = dest;
+
+        uint32_t* data = reinterpret_cast<uint32_t*>(reinterpret_cast<char*>(m_data));
+        data[-1] = prevSize + amount;
+    }
+
+    inline uint32_t size() const
+    {
+        auto* data = reinterpret_cast<uint32_t*>(m_data);
+        if (!data)
+        {
+            return 0;
+        }
+
+        return reinterpret_cast<uint32_t*>(m_data)[-1];
+    }
+
+    inline T& at(uint32_t index)
+    {
+        return m_data[index];
+    }
+
+    inline T& operator[](uint32_t index)
+    {
+        return m_data[index];
+    }
+
+    class Iterator
+    {
+    public:
+        using iterator_category = std::forward_iterator_tag;
+        using value_type = T;
+        using difference_type = std::ptrdiff_t;
+        using pointer = T*;
+        using reference = T&;
+
+        Iterator(pointer ptr)
+            : ptr(ptr)
+        {}
+
+        reference operator*() const
+        {
+            return *ptr;
+        }
+        pointer operator->()
+        {
+            return ptr;
+        }
+
+        Iterator& operator++()
+        {
+            ptr++;
+            return *this;
+        }
+
+        Iterator operator++(int)
+        {
+            Iterator tmp = *this;
+            ++(*this);
+            return tmp;
+        }
+
+        friend bool operator==(const Iterator& a, const Iterator& b)
+        {
+            return a.ptr == b.ptr;
+        };
+        friend bool operator!=(const Iterator& a, const Iterator& b)
+        {
+            return a.ptr != b.ptr;
+        };
+
+    private:
+        pointer ptr;
+    };
+
+    Iterator begin()
+    {
+        return Iterator(m_data);
+    }
+    Iterator end()
+    {
+        return Iterator(m_data + size());
+    }
+
+    Iterator begin() const
+    {
+        return Iterator(m_data);
+    }
+    Iterator end() const
+    {
+        return Iterator(m_data + size());
+    }
+};
 
 class FBBitArray
 {
@@ -470,6 +799,7 @@ class PersistenceServerPlayerExtent : public ServerPlayerExtent
 {
 public:
     AU_DECLARE_SERVERPLAYEREXTENT_MEMBERS();
+
     char pad_0008[0x28];
     uint32_t m_rank;        // 0x30
     uint32_t m_kills;       // 0x34
@@ -480,11 +810,17 @@ public:
 
 
     AU_DECLARE_GAMEMEMBERFUNC(0x14445BA30, void, SetRank, (rank), uint32_t rank)
+    AU_DECLARE_GAMEMEMBERFUNC(0x14445B940, void, SetKills, (kills), uint32_t kills)
+    AU_DECLARE_GAMEMEMBERFUNC(0x14445B8F0, void, SetDeaths, (deaths), uint32_t deaths)
     AU_DECLARE_GAMEMEMBERFUNC(0x14445BA60, void, SetScore, (score), uint32_t score)
     AU_DECLARE_GAMEMEMBERFUNC(0x14445BA00, void, SetAssists, (assists), uint32_t assists) // maybe
-    AU_DECLARE_GAMEMEMBERFUNC(0x14445B940, void, SetKills, (kills), uint32_t kills)
     AU_DECLARE_GAMEMEMBERFUNC(0x14445B8B0, void, SetUnk, (something), uint32_t something)
-    AU_DECLARE_GAMEMEMBERFUNC(0x14445B8F0, void, SetDeaths, (deaths), uint32_t deaths)
+};
+
+class ServerSoldierPlayerExtent : public ServerPlayerExtent
+{
+    AU_DECLARE_SERVERPLAYEREXTENT_MEMBERS();
+
 };
 
 class PersistenceClientPlayerExtent : public ClientPlayerExtent

@@ -139,7 +139,7 @@ enum OnlineEnvironment
     OnlineEnvironment_Count,
 };
 
-class DataContainer
+class DataContainer2
 {
 public:
     char _0x000[0x10]; // 0x0000
@@ -159,7 +159,7 @@ enum GamePlatform
     GamePlatformCount     // 0x0009
 };
 
-class SystemSettings : public DataContainer
+class SystemSettings : public DataContainer2
 {
 public:
     char pad_0010[0x8];
@@ -196,7 +196,7 @@ enum TeamId
     TeamIdCount  // 0x0011
 };
 
-class Asset : public DataContainer
+class Asset : public DataContainer2
 {
 public:
     char* Name; // 0x0018
@@ -292,7 +292,7 @@ public:
     char* GameName;     // 0x0048
 };
 
-class SubWorldInclusionCriterion : public DataContainer
+class SubWorldInclusionCriterion : public DataContainer2
 {
 public:
     char** Options; // 0x0018
@@ -305,10 +305,10 @@ public:
     SubWorldInclusionCriterion** Criteria; // 0x0020
 };
 
-class SubViewData : public DataContainer
+class SubViewData : public DataContainer2
 {};
 
-class PlayerViewData : public DataContainer
+class PlayerViewData : public DataContainer2
 {
 public:
     SubViewData** SubViews; // 0x0018
@@ -930,7 +930,7 @@ struct DeltaCompressionSettings
     bool ShareBaselinesAcrossConnections; // 0x0005
     char _0x0006[2];                      // 0x0006
 };
-class NetObjectSystemSettings : public DataContainer
+class NetObjectSystemSettings : public DataContainer2
 {
 public:
     NetObjectPrioritySettings PrioritySettings;        // 0x0018
@@ -1016,5 +1016,13 @@ class ForceCardAsset : public DataContainerPolicyAsset
     bool IsBoostCard;
     bool ForceRechargeUnusedWeapon;
     bool IsVehicleCard;
+};
+
+class ConsoleCommandEntityData : public EntityData
+{
+public:
+    FBArray<char*> Commands;
+    char* DynamicCommand;
+    Realm Realm;
 };
 } // namespace Kyber

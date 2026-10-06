@@ -31,7 +31,9 @@ namespace Kyber
 {
 Program::Program(HMODULE module)
     : m_module(module)
+    , m_console(nullptr)
     , m_server(nullptr)
+    , m_client(nullptr)
     , m_clientState(ClientState_None)
     , m_joining(false)
 {
