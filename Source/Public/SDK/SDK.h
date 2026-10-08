@@ -541,6 +541,23 @@ public:
     const GameObjectData* m_data;
 };
 
+class EntityBus : public TypeObject
+{
+public:
+    // Can't confirm the accuracy of these to 2015, however we don't need to really
+    void* owner;
+    EntityBus* m_parentBus;
+    void* m_transformSpace;
+    EntityBus* m_prevSibling;
+    EntityBus* m_nextSibling;
+    EntityBus* m_firstChild;
+    int m_refCount;
+    Realm realm;
+    NativeEntity** m_peers;
+    char pad[0x30];
+    uintptr_t m_entityBusBridgeOrExposedObject;
+};
+
 struct ArrayBase
 {
     static void* emptyArrayBegin();

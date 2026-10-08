@@ -29,7 +29,7 @@ void EntityManagerPropertyChangedHk(NativeEntity* entity, void* modification)
         return;
     }
 
-    AuricEntityBase* auricEntity = 0; // g_program->m_entityManager->GetKyberEntity(entity);
+    AuricEntityBase* auricEntity = g_program->m_entityManager->GetAuricEntity(entity);
     if (auricEntity == nullptr)
     {
         return;
@@ -125,7 +125,10 @@ TypeObject* EntityManager::CreateEntity(void* params, DataContainer* data)
 
     PlatformUtils::DuplicateVTable(entity, 23);
 
+    return nullptr;
+
     AuricEntityBase* auricEntity = 0;
+    //EntityManagerStaticData::Get().GetCreator(typeInfo->getName())(this, entity, data);
 
     void* origPropertyChangedFn = PlatformUtils::HookVTableFunction(entity, EntityManagerPropertyChangedHk, 5);
     void* origOnDestroyFn = PlatformUtils::HookVTableFunction(entity, EntityManagerOnDestroyHk, 9);
