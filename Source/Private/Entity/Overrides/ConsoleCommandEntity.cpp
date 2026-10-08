@@ -2,10 +2,13 @@
 
 #include <Entity/Overrides/ConsoleCommandEntity.h>
 #include <Core/Program.h>
+#include <Base/Log.h>
 
 namespace Kyber
 {
-ConsoleCommandEntity::ConsoleCommandEntity(NativeEntity* entity, ConsoleCommandEntityData* data)
+AU_IMPLEMENT_ENTITY_OVERRIDE(ConsoleCommandEntity, ConsoleCommandEntityData);
+
+ConsoleCommandEntity::ConsoleCommandEntity(EntityManager* entityManager, NativeEntity* entity, ConsoleCommandEntityData* data)
     : AuricEntity(entity, data)
 {}
 
@@ -14,14 +17,7 @@ ConsoleCommandEntity::~ConsoleCommandEntity()
 
 void ConsoleCommandEntity::Event(EntityEvent* event)
 {
-    if (!event->Is("Execute"))
-    {
-        return;
-    }
-
-    for (char* cmd : GetData()->Commands)
-    {
-        g_program->m_console->EnqueueCommand(cmd);
-    }
+    KYBER_LOG(LogLevel::Info, "Got Event: " << std::hex << event->eventId << " from ConsoleCommandEntity!")
+    return;
 }
 }

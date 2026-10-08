@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include <Entity/Overrides/ConsoleCommandEntity.h>
 #include <Entity/EntityManager.h>
 
 #include <SDK/SDK.h>
@@ -13,7 +12,7 @@ namespace Kyber
 class ConsoleCommandEntity : public AuricEntity<ConsoleCommandEntityData>
 {
 public:
-    ConsoleCommandEntity(NativeEntity* entity, ConsoleCommandEntityData* data);
+    ConsoleCommandEntity(EntityManager* entityManager, NativeEntity* entity, ConsoleCommandEntityData* data);
     ~ConsoleCommandEntity();
 
     void Event(EntityEvent* event) override;

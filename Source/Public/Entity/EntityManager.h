@@ -6,16 +6,29 @@
 #include <SDK/TypeInfo.h>
 
 #include <mutex>
+#include <unordered_set>
+#include <functional>
+#include <map>
 
 namespace Kyber
 {
+#define AU_INTERNAL_IMPLEMENT_ENTITY(name, dataType, override)                                                                             \
+    AuricEntityBase* __entityCreator__##name##_##dataType(EntityManager* entityManager, NativeEntity* entity, DataContainer* data)         \
+    {                                                                                                                                      \
+        return new name(entityManager, entity, reinterpret_cast<dataType*>(data));                                                         \
+    }                                                                                                                                      \
+                                                                                                                                           \
+    EntityStaticRegistrar _entityRegistrar_##name##_##dataType(#dataType, __entityCreator__##name##_##dataType, override)
+
+#define AU_IMPLEMENT_ENTITY_OVERRIDE(name, dataType) AU_INTERNAL_IMPLEMENT_ENTITY(name, dataType, true)
+
 typedef void(__fastcall* Entity_propertyChanged_t)(void* entity, void* modification);
 typedef void(__fastcall* Entity_onDestroy_t)(void* entity);
 typedef void(__fastcall* Entity_event_t)(void* entity, EntityEvent* event);
 typedef void(__fastcall* Entity_deinit_t)(void* entity, void* info);
 typedef void(__fastcall* Entity_dtor_t)(void* entity);
 
-class AuricEntityBase : public TypeObject
+class AuricEntityBase
 {
     friend class EntityManager;
 
@@ -106,6 +119,53 @@ public:
     const T* GetData() const
     { 
         return static_cast<const T*>(m_data);
+    }
+};
+
+using AuricEntityCreator = std::function<AuricEntityBase*(class EntityManager*, NativeEntity*, DataContainer*)>;
+
+class EntityManagerStaticData
+{
+public:
+    static EntityManagerStaticData& Get()
+    {
+        static EntityManagerStaticData instance;
+        return instance;
+    }
+
+    void RegisterEntity(const std::string& dataName, AuricEntityCreator creator, bool override = false)
+    {
+        m_creators[dataName] = creator;
+
+        if (override)
+        {
+            m_overrideCreators.insert(dataName);
+        }
+    }
+
+    AuricEntityCreator GetCreator(const std::string& dataName)
+    {
+        if (!m_creators.count(dataName))
+        {
+            return nullptr;
+        }
+
+        return m_creators[dataName];
+    }
+
+private:
+    std::map<std::string, AuricEntityCreator> m_creators;
+
+    std::unordered_set<std::string> m_overrideCreators;
+};
+
+class EntityStaticRegistrar
+{
+public:
+    EntityStaticRegistrar(const std::string& dataName, AuricEntityCreator creator, bool override)
+    {
+        EntityManagerStaticData& data = EntityManagerStaticData::Get();
+        data.RegisterEntity(dataName, creator, override);
     }
 };
 

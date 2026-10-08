@@ -117,23 +117,17 @@ TypeObject* EntityManager::CreateEntity(void* params, DataContainer* data)
         KYBER_LOG(LogLevel::Warning, "Failed to create entity for " << name);
         return nullptr;
     }
-    else
-    {
-        KYBER_LOG(LogLevel::Info, "Created entity for: " << name << " addr: " << std::hex << entity);
-        KYBER_LOG(LogLevel::Info, "ZOZOZOZ");
-    }
 
     PlatformUtils::DuplicateVTable(entity, 23);
 
-    return nullptr;
+    //return nullptr;
 
-    AuricEntityBase* auricEntity = 0;
-    //EntityManagerStaticData::Get().GetCreator(typeInfo->getName())(this, entity, data);
+    AuricEntityBase* auricEntity = EntityManagerStaticData::Get().GetCreator(typeInfo->getName())(this, entity, data);
 
-    void* origPropertyChangedFn = PlatformUtils::HookVTableFunction(entity, EntityManagerPropertyChangedHk, 5);
-    void* origOnDestroyFn = PlatformUtils::HookVTableFunction(entity, EntityManagerOnDestroyHk, 9);
-    void* origEventFn = PlatformUtils::HookVTableFunction(entity, EntityManagerEventHk, 7);
-    void* origDeinitFn = PlatformUtils::HookVTableFunction(entity, EntityManagerDeinitHk, 20);
+    void* origPropertyChangedFn = PlatformUtils::HookVTableFunction(entity, EntityManagerPropertyChangedHk, 2);
+    void* origEventFn = PlatformUtils::HookVTableFunction(entity, EntityManagerEventHk, 4);
+    void* origOnDestroyFn = PlatformUtils::HookVTableFunction(entity, EntityManagerOnDestroyHk, 7);
+    void* origDeinitFn = PlatformUtils::HookVTableFunction(entity, EntityManagerDeinitHk, 17);
 
     if (true /*isOverrideCreator*/)
     {
@@ -143,7 +137,11 @@ TypeObject* EntityManager::CreateEntity(void* params, DataContainer* data)
         auricEntity->m_origDeinitFn = reinterpret_cast<Entity_deinit_t>(origDeinitFn);
     }
 
-    return nullptr;
+    KYBER_LOG(LogLevel::Info, "Created custom entity for " << typeInfo->getName() << " with data at " << data);
+
+    std::lock_guard<std::recursive_mutex> lock(m_mutex);
+    m_bindings.push_back({ entity, auricEntity });
+    return entity;
 }
 
 void EntityManager::OnEntityCreated(NativeEntity* entity)
