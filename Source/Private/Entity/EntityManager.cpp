@@ -16,10 +16,14 @@
 namespace Kyber
 {
 TL_DECLARE_FUNC(0x143BED980, NativeEntity*, DefaultEntityCreator_ConsoleCommandEntity_Create, void* entityCreator, void* creationInfo)
+TL_DECLARE_FUNC(0x143A4A870, void, EntityBus_FireEvent, void* inst, const DataContainer* data, const int eventHash);
 
 AuricEntityBase::AuricEntityBase(NativeEntity* entity, DataContainer* data)
     : m_nativeEntity(entity)
     , m_data(data)
+    , m_isSpatialEntity(false)
+    , m_isInitialized(true)
+    , m_wantUpdates(false)
     {}
 
 void EntityManagerPropertyChangedHk(NativeEntity* entity, void* modification)
@@ -104,12 +108,14 @@ TypeObject* EntityManager::CreateEntity(void* params, DataContainer* data)
         return nullptr;
     }
 
-    const char* name = typeInfo->getName();
-    if (!(name && strstr(name, "ConsoleCommandEntityData") != nullptr))
+
+    bool isOverrideCreator = EntityManagerStaticData::Get().IsOverrideCreator(typeInfo->getName());
+    if (!isOverrideCreator)
     {
         return nullptr;
     }
 
+    const char* name = typeInfo->getName();
 
     NativeEntity* entity = DefaultEntityCreator_ConsoleCommandEntity_Create(nullptr, params);
     if (entity == nullptr)
@@ -120,8 +126,6 @@ TypeObject* EntityManager::CreateEntity(void* params, DataContainer* data)
 
     PlatformUtils::DuplicateVTable(entity, 23);
 
-    //return nullptr;
-
     AuricEntityBase* auricEntity = EntityManagerStaticData::Get().GetCreator(typeInfo->getName())(this, entity, data);
 
     void* origPropertyChangedFn = PlatformUtils::HookVTableFunction(entity, EntityManagerPropertyChangedHk, 2);
@@ -129,15 +133,23 @@ TypeObject* EntityManager::CreateEntity(void* params, DataContainer* data)
     void* origOnDestroyFn = PlatformUtils::HookVTableFunction(entity, EntityManagerOnDestroyHk, 7);
     void* origDeinitFn = PlatformUtils::HookVTableFunction(entity, EntityManagerDeinitHk, 17);
 
-    if (true /*isOverrideCreator*/)
+    if (isOverrideCreator) // Research why this is a !isOverrideCreator in Kyber V2
     {
         auricEntity->m_origPropertyChangedFn = reinterpret_cast<Entity_propertyChanged_t>(origPropertyChangedFn);
         auricEntity->m_origOnDestroyFn = reinterpret_cast<Entity_onDestroy_t>(origOnDestroyFn);
         auricEntity->m_origEventFn = reinterpret_cast<Entity_event_t>(origEventFn);
         auricEntity->m_origDeinitFn = reinterpret_cast<Entity_deinit_t>(origDeinitFn);
     }
+    else
+    {
+        auricEntity->m_origPropertyChangedFn = nullptr;
+        auricEntity->m_origOnDestroyFn = nullptr;
+        auricEntity->m_origEventFn = nullptr;
+        auricEntity->m_origDeinitFn = nullptr;
+        auricEntity->m_origDtorFn = nullptr;
+    }
 
-    KYBER_LOG(LogLevel::Info, "Created custom entity for " << typeInfo->getName() << " with data at " << data);
+    KYBER_LOG(LogLevel::DebugPlusPlus, "Created custom entity for " << typeInfo->getName() << " with data at " << data);
 
     std::lock_guard<std::recursive_mutex> lock(m_mutex);
     m_bindings.push_back({ entity, auricEntity });
@@ -147,6 +159,38 @@ TypeObject* EntityManager::CreateEntity(void* params, DataContainer* data)
 void EntityManager::OnEntityCreated(NativeEntity* entity)
 {
 
+}
+
+void EntityManager::UpdateEntities(Realm realm, const void* params)
+{
+    std::lock_guard<std::recursive_mutex> lock(m_mutex);
+    for (const auto& binding : m_bindings)
+    {
+        if (!binding.auric->m_wantUpdates || !binding.auric->m_isInitialized)
+        {
+            continue;
+        }
+
+        if (binding.native->GetRealm() != realm)
+        {
+            continue;
+        }
+
+        binding.auric->Update(params);
+    }
+}
+
+void AuricEntityBase::FireEvent(EventId entityEvent)
+{
+    KYBER_LOG(LogLevel::Info, "Firing event " << entityEvent << " NativeEntity: " << m_nativeEntity);
+
+    EntityEvent event = entityEvent;
+    EntityBus_FireEvent(m_nativeEntity->m_entityBus, reinterpret_cast<const DataContainer*>(m_data), entityEvent);
+}
+
+void AuricEntityBase::FireEvent(const char* event)
+{
+    FireEvent(StringUtils::HashQuick(event));
 }
 
 AuricEntityBase* EntityManager::GetAuricEntity(NativeEntity* nativeEntity)

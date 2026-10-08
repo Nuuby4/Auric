@@ -479,12 +479,12 @@ public:
     void release();
 
     // Override this when necessary, this is just the base DataContainer TypeInfo
-    TypeInfo* getType() const override
-    { 
-        return m_dcType != nullptr ? m_dcType : (TypeInfo*)0x142F59D40;
-    }
+    //TypeInfo* getType() const override
+    //{ 
+    //    return m_dcType != nullptr ? m_dcType : (TypeInfo*)0x142F59D40;
+    //}
 
-    TypeInfo* m_dcType = nullptr;
+    //TypeInfo* m_dcType = nullptr;
     uint32_t m_refCount = 1;
     uint16_t m_dcFlags = 0;
     ResourceCompartment m_compartment = ResourceCompartment_Static;

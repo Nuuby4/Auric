@@ -25,6 +25,7 @@
 #define OFFSET_CREATESERVERBACKEND HOOK_OFFSET(0x1441B0470)
 #define OFFSET_APPLY_SETTINGS HOOK_OFFSET(0x14334AE20)
 
+#define OFFSET_SERVERUPDATEGAME HOOK_OFFSET(0x143C47BB0)
 namespace Kyber
 {
 Server::Server()
@@ -141,11 +142,23 @@ __int64 CreateServerBackendHk(BackendType backendType, __int64 serverArena, __in
     return trampoline(newBackendType, serverArena, configuration);
 }
 
+void ServerUpdateGameHk(void* inst, const void* params)
+{
+    static const auto trampoline = HookManager::Call(ServerUpdateGameHk);
+    trampoline(inst, params);
+
+    if (g_program->m_entityManager != nullptr)
+    {
+        g_program->m_entityManager->UpdateEntities(Realm_Server, params);
+    }
+}
+
 HookTemplate server_hook_offsets[] = {
     { OFFSET_SERVER_CONSTRUCTOR, ServerCtorHk },
     { OFFSET_SERVER_START, ServerStartHk },
     { OFFSET_APPLY_SETTINGS, SettingsManagerApplyHk },
     { OFFSET_CREATESERVERBACKEND, CreateServerBackendHk },
+    { OFFSET_SERVERUPDATEGAME, ServerUpdateGameHk},
 };
 
 void Server::InitializeGameHooks()

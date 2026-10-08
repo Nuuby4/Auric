@@ -90,6 +90,7 @@ struct ConsoleMethod
     const char* name;
     const char* groupName;
     const char* description;
+    const void* empty;
 };
 
 void ConsoleRegistry_registerInstanceMethod(

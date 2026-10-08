@@ -36,6 +36,9 @@ public:
     AuricEntityBase(NativeEntity* entity, DataContainer* data);
     virtual ~AuricEntityBase() = default;
 
+    void FireEvent(EventId entityEvent);
+    void FireEvent(const char* event);
+
     virtual void OnDestroy()
     {
         m_isInitialized = false;
@@ -79,6 +82,8 @@ public:
 
         m_origDeinitFn(m_nativeEntity, info);
     }
+
+    virtual void Update(const void* params) {};
 
     const DataContainer* GetData() const
     {
@@ -143,6 +148,11 @@ public:
         }
     }
 
+    bool IsOverrideCreator(const std::string& dataName)
+    {
+        return m_overrideCreators.count(dataName);
+    }
+
     AuricEntityCreator GetCreator(const std::string& dataName)
     {
         if (!m_creators.count(dataName))
@@ -187,6 +197,8 @@ public:
 
     AuricEntityBase* GetAuricEntity(NativeEntity* nativeEntity);
     void RemoveEntity(NativeEntity* nativeEntity);
+
+    void UpdateEntities(Realm realm, const void* params);
 
 private:
     std::recursive_mutex m_mutex;

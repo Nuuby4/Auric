@@ -1025,4 +1025,12 @@ public:
     char* DynamicCommand;
     Realm Realm;
 };
+
+class ConsoleCommandTriggerEntityData : public EntityData
+{
+public:
+    char* CommandName;
+    char* GroupName;
+    Realm Realm;
+};
 } // namespace Kyber

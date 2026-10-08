@@ -11,6 +11,7 @@
 #define OFFSET_CLIENTCHANGESTATE HOOK_OFFSET(0x143A95BB0)
 #define OFFSET_CLIENT_INIT_NETWORK HOOK_OFFSET(0x143A97630)
 #define OFFSET_CLIENT_CONNECTTOADDRESS HOOK_OFFSET(0x143B136F0)
+#define OFFSET_CLIENTUPDATEGAME HOOK_OFFSET(0x143A9D550)
 
 #define OFFSET_GET_CLIENT_INSTANCE 0x14659DE50
 
@@ -85,6 +86,17 @@ void ClientConnectToAddressHk(GameClient* client, const char* ipAddress, const c
     }
 }
 
+void ClientUpdateGameHk(void* inst, const void* params)
+{
+    static const auto trampoline = HookManager::Call(ClientUpdateGameHk);
+    trampoline(inst, params);
+
+    if (g_program->m_entityManager != nullptr)
+    {
+        g_program->m_entityManager->UpdateEntities(Realm_Client, params);
+    }
+}
+
 void Client::ChangeState(ClientState newState)
 {
     ClientChangeStateHk(GameClient::Get(), newState, m_clientState);
@@ -100,6 +112,7 @@ HookTemplate client_hook_offsets[] = {
     { OFFSET_CLIENTCHANGESTATE, ClientChangeStateHk },
     { OFFSET_CLIENT_CONNECTTOADDRESS, ClientConnectToAddressHk },
     { OFFSET_CLIENT_INIT_NETWORK, ClientInitNetworkHk },
+    { OFFSET_CLIENTUPDATEGAME, ClientUpdateGameHk},
 };
 
 void Client::InitializeHooks()

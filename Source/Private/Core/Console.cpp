@@ -12,13 +12,50 @@
 
 namespace Kyber
 {
+#define SINGLE_ARG(...) __VA_ARGS__
+
 TL_DECLARE_FUNC(0x14334B160, void, ConsoleRegistry_registerConsoleMethods, const char* groupName, ConsoleMethod* methods, int count);
+TL_DECLARE_FUNC(0x14334C370, SINGLE_ARG(eastl::fixed_vector<InstanceMethod, 128>&), ConsoleRegistry_getInstanceMethods);
 
 void Console::RegisterConsoleCommand(StaticConsoleMethodPtr_t func, const char* name, const char* description)
 {
     ConsoleMethod* method = new ConsoleMethod{ func, name, 0, description };
     ConsoleRegistry_registerConsoleMethods("Auric", method, 1);
 }   
+
+void ConsoleRegistry_registerInstanceMethod(
+    fastdelegate::FastDelegate1<ConsoleContext&, void>& method, const char* name, const char* groupName)
+{
+    for (InstanceMethod& m : ConsoleRegistry_getInstanceMethods())
+    {
+        if (strcmp(m.name, name) == 0)
+        {
+            m.func = method;
+            return;
+        }
+    }
+    InstanceMethod& m = ConsoleRegistry_getInstanceMethods().push_back();
+    m.description = "";
+    m.func = method;
+    m.groupName = groupName;
+    m.name = name;
+}
+
+void Console::UnregisterCommand(const char* name)
+{
+    eastl::fixed_vector<InstanceMethod, 128>& methods = ConsoleRegistry_getInstanceMethods();
+    for (eastl::fixed_vector<InstanceMethod, 128>::iterator it = methods.begin(); it != methods.end();)
+    {
+        if (strcmp(name, it->name) != 0)
+        {
+            ++it;
+            continue;
+        }
+
+        it = methods.erase(it);
+        return;
+    }
+}
 
 void ExtentDebug(ConsoleContext& cc)
 {
@@ -55,12 +92,6 @@ void IncreaseChargeAmount(ConsoleContext& cc)
     }
 
     player->GetForceCardServerPlayerExtent()->IncreaseChargeCount(numCharges);
-    /*
-    KYBER_LOG(LogLevel::Info, "ForceCardServerPlayerExtent: " << std::hex << player->GetForceCardServerPlayerExtent());
-    KYBER_LOG(LogLevel::Info, "Slot1 Offset: " << &player->GetForceCardServerPlayerExtent()->m_slot1asset);
-    KYBER_LOG(LogLevel::Info, "Slot1: " << player->GetForceCardServerPlayerExtent()->m_slot1asset->Name);
-    KYBER_LOG(LogLevel::Info, "Slot2: " << player->GetForceCardServerPlayerExtent()->m_slot2asset->Name);
-    KYBER_LOG(LogLevel::Info, "Slot3: " << player->GetForceCardServerPlayerExtent()->m_slot3asset->Name);*/
 }
 
 void PrintPlayerManagers(ConsoleContext& cc)
@@ -73,7 +104,7 @@ void PrintPlayerManagers(ConsoleContext& cc)
 
 void TestCommand(ConsoleContext& cc)
 { 
-    g_program->m_server->Start("XP2/Levels/Clouds/Clouds_01/Clouds_01", "WalkerAssault", 40, SocketSpawnInfo(false, "", ""));
+    g_program->m_server->Start("Levels/Desert/Desert_04/Desert_04", "DropZone", 40, SocketSpawnInfo(false, "", ""));
 }
 
 void LoadLevelCommand(ConsoleContext& cc)
