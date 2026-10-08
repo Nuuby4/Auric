@@ -7,6 +7,7 @@
 #include <Core/Server.h>
 #include <SDK/TypeInfo.h>
 #include <API/APIService.h>
+#include <Entity/EntityManager.h>
 #include <SDK/Funcs.h>
 
 #include <Windows.h>
@@ -45,6 +46,7 @@ public:
 
     HMODULE m_module;
     Console* m_console;
+    EntityManager* m_entityManager;
     Server* m_server;
     Client* m_client;
     ClientState m_clientState;

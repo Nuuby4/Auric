@@ -1,11 +1,205 @@
 // Copyright Nuuby. All Rights Reserved.
 
 #include <Entity/EntityManager.h>
+#include <Core/Program.h>
+#include <Utilities/PlatformUtils.h>
+
+#include <Base/Log.h>
+#include <Hook/HookManager.h>
+#include <SDK/Funcs.h>
+#include <SDK/SDK.h>
+
+#include <iostream>
+
+#define ENTITYFACTORY_INTERNALCREATEENTITY HOOK_OFFSET(0x143A68CC0)
 
 namespace Kyber
 {
+TL_DECLARE_FUNC(0x143BED980, NativeEntity*, DefaultEntityCreator_ConsoleCommandEntity_Create, void* entityCreator, void* creationInfo)
+
 AuricEntityBase::AuricEntityBase(NativeEntity* entity, DataContainer* data)
     : m_nativeEntity(entity)
     , m_data(data)
     {}
+
+void EntityManagerPropertyChangedHk(NativeEntity* entity, void* modification)
+{
+    if (g_program->m_entityManager == nullptr)
+    {
+        return;
+    }
+
+    AuricEntityBase* auricEntity = 0; // g_program->m_entityManager->GetKyberEntity(entity);
+    if (auricEntity == nullptr)
+    {
+        return;
+    }
+
+    auricEntity->PropertyChanged(modification);
+}
+
+void EntityManagerOnDestroyHk(NativeEntity* entity)
+{
+    if (g_program->m_entityManager == nullptr)
+    {
+        return;
+    }
+
+    AuricEntityBase* auricEntity = g_program->m_entityManager->GetAuricEntity(entity);
+    if (auricEntity == nullptr)
+    {
+        return;
+    }
+
+    auricEntity->OnDestroy();
+
+    g_program->m_entityManager->RemoveEntity(entity);
+    delete auricEntity;
+}
+
+void EntityManagerEventHk(NativeEntity* entity, EntityEvent* entityEvent)
+{
+    if (g_program->m_entityManager == nullptr)
+    {
+        return;
+    }
+
+    AuricEntityBase* auricEntity = g_program->m_entityManager->GetAuricEntity(entity);
+    if (auricEntity == nullptr)
+    {
+        return;
+    }
+
+    auricEntity->Event(entityEvent);
+}
+
+void EntityManagerDeinitHk(NativeEntity* entity, void* info)
+{
+    if (g_program->m_entityManager == nullptr)
+    {
+        return;
+    }
+
+    AuricEntityBase* auricEntity = g_program->m_entityManager->GetAuricEntity(entity);
+    if (auricEntity == nullptr)
+    {
+        return;
+    }
+
+    auricEntity->Deinit(info);
+}
+
+EntityManager::EntityManager()
+{
+    InitializeHooks();
+
+    KYBER_LOG(LogLevel::Info, "[Entity] Initialized EntityManager");
+}
+
+TypeObject* EntityManager::CreateEntity(void* params, DataContainer* data)
+{
+    const TypeInfo* typeInfo = data->getType();
+    if (typeInfo == nullptr)
+    {
+        return nullptr;
+    }
+
+    const char* name = typeInfo->getName();
+    if (!(name && strstr(name, "ConsoleCommandEntityData") != nullptr))
+    {
+        return nullptr;
+    }
+
+
+    NativeEntity* entity = DefaultEntityCreator_ConsoleCommandEntity_Create(nullptr, params);
+    if (entity == nullptr)
+    {
+        KYBER_LOG(LogLevel::Warning, "Failed to create entity for " << name);
+        return nullptr;
+    }
+    else
+    {
+        KYBER_LOG(LogLevel::Info, "Created entity for: " << name << " addr: " << std::hex << entity);
+        KYBER_LOG(LogLevel::Info, "ZOZOZOZ");
+    }
+
+    PlatformUtils::DuplicateVTable(entity, 23);
+
+    AuricEntityBase* auricEntity = 0;
+
+    void* origPropertyChangedFn = PlatformUtils::HookVTableFunction(entity, EntityManagerPropertyChangedHk, 5);
+    void* origOnDestroyFn = PlatformUtils::HookVTableFunction(entity, EntityManagerOnDestroyHk, 9);
+    void* origEventFn = PlatformUtils::HookVTableFunction(entity, EntityManagerEventHk, 7);
+    void* origDeinitFn = PlatformUtils::HookVTableFunction(entity, EntityManagerDeinitHk, 20);
+
+    if (true /*isOverrideCreator*/)
+    {
+        auricEntity->m_origPropertyChangedFn = reinterpret_cast<Entity_propertyChanged_t>(origPropertyChangedFn);
+        auricEntity->m_origOnDestroyFn = reinterpret_cast<Entity_onDestroy_t>(origOnDestroyFn);
+        auricEntity->m_origEventFn = reinterpret_cast<Entity_event_t>(origEventFn);
+        auricEntity->m_origDeinitFn = reinterpret_cast<Entity_deinit_t>(origDeinitFn);
+    }
+
+    return nullptr;
+}
+
+void EntityManager::OnEntityCreated(NativeEntity* entity)
+{
+
+}
+
+AuricEntityBase* EntityManager::GetAuricEntity(NativeEntity* nativeEntity)
+{
+    std::lock_guard<std::recursive_mutex> lock(m_mutex);
+    for (const auto& binding : m_bindings)
+    {
+        if (binding.native != nativeEntity)
+        {
+            continue;
+        }
+
+        return binding.auric;
+    }
+
+    return nullptr;
+}
+
+void EntityManager::RemoveEntity(NativeEntity* entity)
+{
+    std::lock_guard<std::recursive_mutex> lock(m_mutex);
+    m_bindings.erase(
+        std::remove_if(m_bindings.begin(), m_bindings.end(), [&](AuricEntityBindings const& binding) { return binding.native == entity; }),
+        m_bindings.end());
+}
+
+void* EntityFactory_InternalCreateEntityHk(void* params, void* datacontext)
+{
+    static const auto trampoline = HookManager::Call(EntityFactory_InternalCreateEntityHk);
+    DataContainer* data = *(DataContainer**)((__int64)params + 0xD0);
+    const char* name = data->getType()->getName();
+
+    if (g_program->m_entityManager != nullptr)
+    {
+        TypeObject* entityManagerEntity = g_program->m_entityManager->CreateEntity(params, data);
+        if (entityManagerEntity != nullptr)
+        {
+            return entityManagerEntity;
+        }
+    }
+
+    void* entity = trampoline(params, datacontext);
+
+    if (entity != nullptr && g_program->m_entityManager != nullptr)
+    {
+        g_program->m_entityManager->OnEntityCreated(reinterpret_cast<NativeEntity*>(entity));
+    }
+    
+    return entity;
+}
+
+void EntityManager::InitializeHooks()
+{
+    HookManager::CreateHook(ENTITYFACTORY_INTERNALCREATEENTITY, EntityFactory_InternalCreateEntityHk);
+    Hook::ApplyQueuedActions();
+}
 }

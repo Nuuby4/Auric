@@ -115,4 +115,31 @@ PBYTE PlatformUtils::FindPattern(LPCSTR lpPattern, LPCSTR lpMask)
 {
     return PlatformUtils::FindPattern(lpPattern, lpMask, 0);
 }
+
+void* PlatformUtils::HookVTableFunction(void* pVtable, void* fnHookFunc, int offset)
+{
+    intptr_t vtable = *((intptr_t*)pVtable);
+    intptr_t func = vtable + sizeof(intptr_t) * offset;
+    intptr_t orig = *((intptr_t*)func);
+
+    MEMORY_BASIC_INFORMATION mbi;
+    VirtualQuery((LPCVOID)func, &mbi, sizeof(mbi));
+    VirtualProtect(mbi.BaseAddress, mbi.RegionSize, PAGE_EXECUTE_READWRITE, &mbi.Protect);
+
+    *((intptr_t*)func) = (intptr_t)fnHookFunc;
+
+    VirtualProtect(mbi.BaseAddress, mbi.RegionSize, mbi.Protect, &mbi.Protect);
+
+    return reinterpret_cast<void*>(orig);
+}
+
+void* PlatformUtils::DuplicateVTable(void* objectPtr, size_t numVirtualFunctions)
+{
+    void** originalVTable = *reinterpret_cast<void***>(objectPtr);
+    size_t vtableSize = sizeof(void*) * numVirtualFunctions;
+    void** newVTable = new void*[numVirtualFunctions];
+    std::memcpy(newVTable, originalVTable, vtableSize);
+    *reinterpret_cast<void***>(objectPtr) = newVTable;
+    return newVTable;
+}
 } // namespace Kyber

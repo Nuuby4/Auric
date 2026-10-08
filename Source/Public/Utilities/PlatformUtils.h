@@ -16,6 +16,8 @@ public:
     static PBYTE FindPattern(PVOID pBase, DWORD dwSize, LPCSTR lpPattern, LPCSTR lpMask);
     static PBYTE FindPattern(LPCSTR lpPattern, LPCSTR lpMask);
     static PBYTE FindPattern(LPCSTR lpPattern, LPCSTR lpMask, LPCWSTR lpModuleName);
+    static void* PlatformUtils::HookVTableFunction(void* pVtable, void* fnHookFunc, int offset);
+    static void* PlatformUtils::DuplicateVTable(void* objectPtr, size_t numVirtualFunctions);
 
 private:
     static BOOL MaskCompare(PVOID pBuffer, LPCSTR lpPattern, LPCSTR lpMask);

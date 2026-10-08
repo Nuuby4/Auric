@@ -32,6 +32,7 @@ namespace Kyber
 Program::Program(HMODULE module)
     : m_module(module)
     , m_console(nullptr)
+    , m_entityManager(nullptr)
     , m_server(nullptr)
     , m_client(nullptr)
     , m_clientState(ClientState_None)
@@ -76,6 +77,9 @@ DWORD WINAPI Program::InitializationThread()
     KYBER_LOG(LogLevel::Info, "                           ///    ");
 
     Initialize();
+
+    m_entityManager = new EntityManager();
+
     m_client = new Client();
     m_server = new Server();
 
