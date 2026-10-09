@@ -4,6 +4,7 @@
 
 #include <SDK/SDK.h>
 #include <SDK/TypeInfo.h>
+#include <Hook/Func.h>
 
 #include <mutex>
 #include <unordered_set>
@@ -28,6 +29,91 @@ typedef void(__fastcall* Entity_event_t)(void* entity, EntityEvent* event);
 typedef void(__fastcall* Entity_deinit_t)(void* entity, void* info);
 typedef void(__fastcall* Entity_dtor_t)(void* entity);
 
+struct DataContext
+{
+    const void* bus;
+    const void* data;
+    const void* exposed;
+
+    DataContext(const void* bus = 0, const void* data = 0, const void* exposed = 0)
+        : bus(bus)
+        , data(data)
+        , exposed(exposed)
+    {}
+};
+
+TL_DECLARE_FUNC(0x143A48FB0, void, DataContext_ctor, void* entityBus, DataContext* dcOut);
+
+class CacheData
+{
+public:
+    void* value;                // 0x0000
+    class TypeInfo* valueType;  // 0x0008
+    char pad[0xC];              // 0x0010
+    uint32_t flags;             // 0x001C
+};
+
+enum CacheDataFlags
+{
+    CacheDataFlags_IsValueSetFlag = 1 << 5,
+    CacheDataFlags_IsValueWrittenFlag = 1 << 6,
+};
+
+struct PropertyWriterBase
+{
+
+    CacheData* m_cache = nullptr;
+
+    bool HasConnection() const
+    {
+        return m_cache != nullptr; 
+    }
+
+    bool HasConnectionValue() const
+    {
+        return m_cache != nullptr ? (m_cache->flags & (CacheDataFlags_IsValueSetFlag | CacheDataFlags_IsValueWrittenFlag)) != 0 : false;
+    }
+};
+
+TL_DECLARE_FUNC(0x143342000, void, DataBus_CreateFieldOverride, const void* bus, PropertyWriterBase* inst, const DataContainer* data,
+    int fieldNameHash, const TypeInfo* typeInfo, const void* defaultValue, bool writeValue);
+TL_DECLARE_FUNC(0x14330B8B0, void*, PropertyRefWriterBase_set, CacheData* cache, const void* value, bool callListeners);
+
+template<typename T>
+struct PropertyWriter : PropertyWriterBase
+{
+    const T* Get() const
+    {
+        return reinterpret_cast<const T*>(m_cache->value);
+    }
+
+    void init(const DataContext* dc, const DataContainer* data, int fieldNameHash, const TypeInfo* typeInfo, const void* defaultValue,
+        bool writeValue)
+    {
+        DataBus_CreateFieldOverride(dc->bus,this, data, fieldNameHash, typeInfo, defaultValue, writeValue);
+    }
+
+    void Set(T* value) const
+    {
+        if (m_cache == nullptr)
+        {
+            return;
+        }
+
+        PropertyRefWriterBase_set(this->m_cache, value, true);
+    }
+
+    void operator=(T* value) const
+    {
+        Set(value);
+    }
+
+    void operator=(T& value) const
+    {
+        Set(&value);
+    }
+};
+
 class AuricEntityBase
 {
     friend class EntityManager;
@@ -38,6 +124,27 @@ public:
 
     void FireEvent(EventId entityEvent);
     void FireEvent(const char* event);
+
+    
+    template<typename T>
+    PropertyWriter<T> CreateFieldOverride(const char* fieldName, const TypeInfo* type, const void* defaultValue)
+    {
+        int fieldHash = StringUtils::HashQuick(fieldName);
+
+        DataContext dc;
+        DataContext_ctor(m_nativeEntity->m_entityBus, &dc);
+
+        PropertyWriter<T> writer;
+        writer.init(&dc, m_data, fieldHash, type, defaultValue, defaultValue != nullptr);
+        return writer;
+    }
+
+    template<typename T>
+    PropertyWriter<T> CreateFieldOverride(const char* fieldName, const TypeInfo* type)
+    { 
+        return CreateFieldOverride<T>(fieldName, type, nullptr); 
+    }
+
 
     virtual void OnDestroy()
     {
@@ -200,8 +307,17 @@ public:
 
     void UpdateEntities(Realm realm, const void* params);
 
+    void RegisterNativeTypeInfo();
+
+    const TypeInfo* GetNativeType(const std::string& name)
+    {
+        return m_nativeTypeInfo.count(name) ? m_nativeTypeInfo[name] : nullptr;
+    }
+
 private:
     std::recursive_mutex m_mutex;
     std::vector<AuricEntityBindings> m_bindings;
+
+    std::unordered_map<std::string, TypeInfo*> m_nativeTypeInfo;
 };
 }

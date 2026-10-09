@@ -215,6 +215,13 @@ void Program::Initialize()
     m_server->Initialize();
     m_client->Initialize();
 
+    // Default Settings
+    WSGameSettings* wsSettings = Settings<WSGameSettings>("WhiteShark");
+
+    wsSettings->SkipLobby = true;
+    wsSettings->SkipPreRound = true;
+    wsSettings->LobbyThreshold = 1;
+    wsSettings->LobbyMaxTeamDiff = 1;
     // @TODO Setup inside MainInitHk
     InitializeConsole();
 }

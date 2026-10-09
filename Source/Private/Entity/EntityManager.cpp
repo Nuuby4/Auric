@@ -96,6 +96,7 @@ void EntityManagerDeinitHk(NativeEntity* entity, void* info)
 EntityManager::EntityManager()
 {
     InitializeHooks();
+    RegisterNativeTypeInfo();
 
     KYBER_LOG(LogLevel::Info, "[Entity] Initialized EntityManager");
 }
@@ -177,6 +178,15 @@ void EntityManager::UpdateEntities(Realm realm, const void* params)
         }
 
         binding.auric->Update(params);
+    }
+}
+
+void EntityManager::RegisterNativeTypeInfo()
+{
+    TypeInfo* firstTypeInfo = (TypeInfo*)0x1430703F0;
+    for (TypeInfo* info = firstTypeInfo; info; info = info->next)
+    {
+        m_nativeTypeInfo[info->getName()] = info;
     }
 }
 

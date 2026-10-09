@@ -594,33 +594,29 @@ public:
 class WSGameSettings : public SystemSettings
 {
 public:
-    char* ReleaseVersionName;                     // 0x0020
-    float RestartCooldown;                        // 0x0028
-    float PostSpawnRestartCooldown;               // 0x002C
-    float NoInteractivityTimeoutTime;             // 0x0030
-    float NoInteractivityThresholdLimit;          // 0x0034
-    float PrivateMatchNoInteractivityTimeoutTime; // 0x0038
-    int32_t PreferredTeam;                        // 0x003C
-    char* PlayerName;                             // 0x0040
-    int32_t LevelLightingOverride;                // 0x0048
-    float ObjectiveDamageScale;                   // 0x004C
-    int32_t TicketLossScale;                      // 0x0050
-    int32_t LobbyThreshold;                       // 0x0054
-    int32_t MaxTeamSizeDifference;                // 0x0058
-    int32_t EventWelcomeTimer;                    // 0x005C
-    int32_t MaximumBattlepoints;                  // 0x0060
-    bool SupportsDebugging;                       // 0x0064
-    bool Is2PlayersCoop;                          // 0x0065
-    bool ForceThirdPerson;                        // 0x0066
-    bool EnableMaxRegenerationLimit;              // 0x0067
-    bool SkipLobby;                               // 0x0068
-    bool DisableHeroDebugMenu;                    // 0x0069
-    bool ForcePrivateMatchLobby;                  // 0x006A
-    bool StopEOR;                                 // 0x006B
-    bool DisableStartupFlow;                      // 0x006C
-    bool AutoBalanceTeamsOnNeutral;               // 0x006D
-    char _0x006E[2];                              // 0x006E
+    char* ReleaseVersionName;
+    float RestartCooldown;
+    float PostSpawnRestartCooldown;
+    float NoInteractivityTimeoutTime;
+    float NoInteractivityThresholdLimit;
+    float PrivateMatchNoInteractivityTimeoutTime;
+    float NoInteractivityTimeoutTimeFirstSpawn;
+    float NoInteractivityPreKickWarning;
+    int32_t LobbyThreshold;
+    int32_t LobbyMaxTeamDiff;
+    bool SupportsDebugging;
+    bool Is2PlayersCoop;
+    bool ForceThirdPerson;
+    bool SkipLobby;
+    bool SkipPreRound;
+    bool ForcePrivateMatchLobby;
+    bool UseDamageNumbers;
+    bool StopEOR;
+    bool UnlockAllHeroes;
+    bool AlwaysAllowJoinAsSpectator;
+    bool PCSplitScreen;
 };
+
 class AutoPlayerSettings : public SystemSettings
 {
 public:

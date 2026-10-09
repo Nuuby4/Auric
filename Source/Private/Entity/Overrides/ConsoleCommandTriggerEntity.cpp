@@ -52,5 +52,4 @@ void ConsoleCommandTriggerEntity::Update(const void* params)
 
     m_commandCount = 0;
 }
-
 } // namespace Kyber

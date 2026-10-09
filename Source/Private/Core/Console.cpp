@@ -158,6 +158,7 @@ Console::Console()
     RegisterConsoleCommand(&LoadLevelCommand, "LoadLevel", "<LevelPath> <GameMode>");
     RegisterConsoleCommand(&SetTeamCommand, "SetTeam", "<Player> <Team>");
 }
+
 void Console::EnqueueCommand(const char* cmd)
 {
     auto delegate = fastdelegate::FastDelegate<void(const char*)>([](const char* result) {
