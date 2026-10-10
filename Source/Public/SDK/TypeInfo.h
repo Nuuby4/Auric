@@ -4,6 +4,8 @@
 
 #include <SDK/SDK.h>
 
+#include <SDK/Transform.h>
+
 #include <stddef.h>
 #include <cstdint>
 #include <string>
@@ -1014,6 +1016,23 @@ class ForceCardAsset : public DataContainerPolicyAsset
     bool IsVehicleCard;
 };
 
+class WindowSettings : public SystemSettings
+{
+public:
+    int32_t PosX;
+    int32_t PosY;
+    uint32_t Width;
+    uint32_t Height;
+    bool AutoSize;
+    bool FullscreenAutoSize;
+    bool EnableEscape;
+    bool EnableInputOnActivate;
+    bool HibernateOnClose;
+    bool Hidden;
+    bool Minimized;
+    bool AllowWindowsLargerThanDesktop;
+};
+
 class ConsoleCommandEntityData : public EntityData
 {
 public:
@@ -1028,5 +1047,66 @@ public:
     char* CommandName;
     char* GroupName;
     Realm Realm;
+};
+
+class PropertyDebugEntityData : public EntityData
+{
+public:
+    Realm Realm;
+    Vec3 TextColor;
+    Vec3 WorldPosition;
+    LinearTransform TransformValue;
+    Vec3 Vec3Value;
+    Vec4 Vec4Value;
+    Vec2 ScreenPosition;
+    char* ValuePrefix;
+    float TextScale;
+    float FloatValue;
+    int32_t IntValue;
+    Vec2 Vec2Value;
+    char* StringValue;
+    bool Multiline;
+    bool ShowTransformInWorld;
+    bool ShowTransformCoordinates;
+    bool DefaultVisible;
+};
+
+enum PropertyDebugTypeClass
+{
+    PropertyDebugTypeClass_String = 0,
+    PropertyDebugTypeClass_Float = 1,
+    PropertyDebugTypeClass_Vec2 = 2,
+    PropertyDebugTypeClass_Vec3 = 3,
+    PropertyDebugTypeClass_Vec4 = 4,
+    PropertyDebugTypeClass_Uint64 = 5,
+    PropertyDebugTypeClass_Uint32 = 6,
+    PropertyDebugTypeClass_LinearTransform = 7,
+    PropertyDebugTypeClass_Bool = 8,
+    PropertyDebugTypeClass_Int = 9,
+    PropertyDebugTypeClass_Enum = 10,
+    PropertyDebugTypeClass_Object = 11
+};
+
+class PropertyDebugInput
+{
+public:
+    char* Name;
+    char* NameInternal;
+    uint32_t NameHash;
+    char* TypeName;
+    PropertyDebugTypeClass TypeClass;
+    uint32_t TypeNameHash;
+    int32_t Index;
+};
+
+class WSPropertyDebugEntityData : public EntityData
+{
+public:
+    Realm Realm;
+    char* Owner;
+    char* EntityName;
+    char* SubName;
+    FBArray<PropertyDebugInput> Inputs;
+    bool ShowOnScreen;
 };
 } // namespace Kyber

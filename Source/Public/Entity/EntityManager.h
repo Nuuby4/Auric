@@ -59,6 +59,33 @@ enum CacheDataFlags
     CacheDataFlags_IsValueWrittenFlag = 1 << 6,
 };
 
+struct PropertyReaderBase
+{
+    CacheData* m_cache = nullptr;
+    void* m_defaultValue = nullptr;
+
+    bool HasConnection() const
+    {
+        return m_cache != nullptr;
+    }
+
+    bool HasConnectionValue() const
+    {
+        return m_cache != nullptr ? (m_cache->flags & CacheDataFlags_IsValueWrittenFlag) != 0 : false;
+    }
+
+    const void* Get() const;
+};
+
+template<typename T>
+struct PropertyReader : PropertyReaderBase
+{
+    const T Get() const
+    { 
+        return *reinterpret_cast<const T*>(PropertyReaderBase::Get());
+    }
+};
+
 struct PropertyWriterBase
 {
 
@@ -78,6 +105,8 @@ struct PropertyWriterBase
 TL_DECLARE_FUNC(0x143342000, void, DataBus_CreateFieldOverride, const void* bus, PropertyWriterBase* inst, const DataContainer* data,
     int fieldNameHash, const TypeInfo* typeInfo, const void* defaultValue, bool writeValue);
 TL_DECLARE_FUNC(0x14330B8B0, void*, PropertyRefWriterBase_set, CacheData* cache, const void* value, bool callListeners);
+TL_DECLARE_FUNC(0x14330C470, void, PropertyReaderBase_set, PropertyReaderBase* inst, const DataContext* dc, const DataContainer* data,
+    int fieldNameHash, const TypeInfo* typeInfo, const void* defaultValue);
 
 template<typename T>
 struct PropertyWriter : PropertyWriterBase
@@ -145,6 +174,22 @@ public:
         return CreateFieldOverride<T>(fieldName, type, nullptr); 
     }
 
+    template<typename T>
+    PropertyReader<T> GetFieldReader(const char* fieldName) const
+    {
+        int fieldHash = StringUtils::HashQuick(fieldName);
+
+        DataContext dc;
+        DataContext_ctor(m_nativeEntity->m_entityBus, &dc);
+
+        PropertyReader<T> reader;
+        PropertyReaderBase_set(&reader, &dc, m_data, fieldHash, nullptr, nullptr);
+        return reader;
+    }
+
+    template<typename T>
+    T* ReadField(const char* fieldName)
+    { return reinterpret_cast<T*>(ReadField(fieldName)); }
 
     virtual void OnDestroy()
     {

@@ -17,6 +17,12 @@ namespace Kyber
 {
 TL_DECLARE_FUNC(0x143BED980, NativeEntity*, DefaultEntityCreator_ConsoleCommandEntity_Create, void* entityCreator, void* creationInfo)
 TL_DECLARE_FUNC(0x143A4A870, void, EntityBus_FireEvent, void* inst, const DataContainer* data, const int eventHash);
+TL_DECLARE_FUNC(0x143307D80, void*, PropertyReaderBaseGetHk, const PropertyReaderBase* inst);
+
+const void* PropertyReaderBase::Get() const
+{
+    return PropertyReaderBaseGetHk(this);
+}
 
 AuricEntityBase::AuricEntityBase(NativeEntity* entity, DataContainer* data)
     : m_nativeEntity(entity)

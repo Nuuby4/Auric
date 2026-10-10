@@ -39,7 +39,7 @@ void ConsoleCommandEntity::Event(EntityEvent* event)
             m_pendingCallback = true;
             Console_enqueueCommand(cmd, ExecuteConsoleCommandCallback_t(this, &ConsoleCommandEntity::CommandCallback));
 
-            // Temporary Until Maxima or Alternative is integrated (Callback cannot get settings not registered in console
+            // Temporary Until Maxima or Alternative is integrated (Callback cannot get settings not accessible in the console)
             WSGameSettings* wsSettings = Settings<WSGameSettings>("WhiteShark");
             if (strcmp(cmd, "Whiteshark.SkipLobby") == 0)
             {

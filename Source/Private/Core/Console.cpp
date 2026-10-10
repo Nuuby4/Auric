@@ -104,7 +104,7 @@ void PrintPlayerManagers(ConsoleContext& cc)
 
 void TestCommand(ConsoleContext& cc)
 { 
-    g_program->m_server->Start("Levels/Desert/Desert_04/Desert_04", "DropZone", 40, SocketSpawnInfo(false, "", ""));
+    g_program->m_server->Start("XP2/Levels/Clouds/Clouds_01/Clouds_01", "WalkerAssault", 40, SocketSpawnInfo(false, "", ""));
 }
 
 void LoadLevelCommand(ConsoleContext& cc)
@@ -153,10 +153,10 @@ Console::Console()
 
     RegisterConsoleCommand(&ExtentDebug, "ExtentDebug", "");
     RegisterConsoleCommand(&IncreaseChargeAmount, "IncreaseCharges", "<Player> <NumCharges>");
-    RegisterConsoleCommand(&PrintPlayerManagers, "PrintPlayerManagers", "");
-    RegisterConsoleCommand(&TestCommand, "Test", "");
     RegisterConsoleCommand(&LoadLevelCommand, "LoadLevel", "<LevelPath> <GameMode>");
     RegisterConsoleCommand(&SetTeamCommand, "SetTeam", "<Player> <Team>");
+    RegisterConsoleCommand(&TestCommand, "Test", "");
+    RegisterConsoleCommand(&PrintPlayerManagers, "PrintPlayerManagers", "");
 }
 
 void Console::EnqueueCommand(const char* cmd)
