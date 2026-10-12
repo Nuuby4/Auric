@@ -154,6 +154,22 @@ public:
     void FireEvent(EventId entityEvent);
     void FireEvent(const char* event);
 
+    template<typename T>
+    PropertyWriter<T> CreateFieldOverride(const int fieldHash, const TypeInfo* type, const void* defaultValue)
+    {
+        DataContext dc;
+        DataContext_ctor(m_nativeEntity->m_entityBus, &dc);
+
+        PropertyWriter<T> writer;
+        writer.init(&dc, m_data, fieldHash, type, defaultValue, defaultValue != nullptr);
+        return writer;
+    }
+
+    template<typename T>
+    PropertyWriter<T> CreateFieldOverride(const int fieldHash, const TypeInfo* type)
+    { 
+        return CreateFieldOverride<T>(fieldHash, type, nullptr); 
+    }
     
     template<typename T>
     PropertyWriter<T> CreateFieldOverride(const char* fieldName, const TypeInfo* type, const void* defaultValue)

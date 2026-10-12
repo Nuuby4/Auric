@@ -5,9 +5,17 @@
 #include <Base/Version.h>
 #include <Core/Program.h>
 
+#include <EASTL/string.h>
 #include <string>
 
 #define EASTL_USER_DEFINED_ALLOCATOR
+
+namespace eastl
+{
+
+EmptyString gEmptyString = *reinterpret_cast<EmptyString*>(0x14281CB20);
+
+}
 
 void* operator new[](
     size_t size, size_t alignment, size_t alignmentOffset, const char* pName, int flags, unsigned debugFlags, const char* file, int line)

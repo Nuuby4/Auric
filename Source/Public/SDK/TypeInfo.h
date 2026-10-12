@@ -1109,4 +1109,40 @@ public:
     FBArray<PropertyDebugInput> Inputs;
     bool ShowOnScreen;
 };
+
+class PrintDebugTextInput
+{
+public:
+    char* Name;
+    char* NameInternal;
+    uint32_t NameHash;
+    int32_t Index;
+};
+
+class WSPrintDebugTextEntityData : public EntityData
+{
+public:
+    Realm Realm;
+    char* Owner;
+    char* EntityName;
+    char* SubName;
+    FBArray<PrintDebugTextInput> Events;
+    bool ShowOnScreen;
+    bool PrintAsStream;
+};
+
+class KillSwitchEntityData : public EntityData
+{
+public:
+    Realm Realm;
+    char* KillSwitch;
+};
+
+class OnlineLicenseInfoEntityData : public EntityData
+{
+public:
+    Realm Realm;
+    LocalPlayerId LocalPlayerId;
+    char* License;
+};
 } // namespace Kyber

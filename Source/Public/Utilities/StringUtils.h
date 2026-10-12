@@ -1,6 +1,8 @@
 // Copyright Nuuby. All Rights Reserved.
 
 #pragma once
+#include <Utilities/Memory.h>
+
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -10,6 +12,7 @@ namespace Kyber
 class StringUtils
 {
 public:
+    static char* CopyWithArena(const std::string& src, MemoryArena* arena = FB_STATIC_ARENA);
     static constexpr uint32_t HashQuick(const char* str)
     {
         uint32_t hash = 5381;
@@ -39,4 +42,3 @@ public:
     }
 };
 }
-

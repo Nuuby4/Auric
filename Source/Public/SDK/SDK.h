@@ -18,6 +18,7 @@
 
 #include <EASTL/fixed_vector.h>
 #include <Utilities/StringUtils.h>
+#include <Utilities/Memory.h>
 
 #include <stddef.h>
 #include <string>
@@ -27,8 +28,6 @@
 
 namespace Kyber
 {
-#define FB_CLIENT_ARENA (reinterpret_cast<MemoryArena*>(0x142A3B390))
-#define FB_SERVER_ARENA (reinterpret_cast<MemoryArena*>(0x142A3CEB0))
 
 #define STRIP_PARENS(...) __VA_ARGS__
 #define AU_DECLARE_GAMEMEMBERFUNC(ptr, returnType, name, args, ...)                                                                         \
@@ -334,7 +333,9 @@ public:
     { return (TypeInfo*)0x142F95420; }
 
     bool Is(const char* event) const
-    { return eventId == StringUtils::HashQuick(event); }
+    { 
+        return eventId == StringUtils::HashQuick(event); 
+    }
 
     mutable EventId eventId;
     mutable Sender sender;
@@ -1052,12 +1053,6 @@ public:
         return *(ClientGameContext**)0x142AE8080;
     }
 };
-
-class MemoryArena
-{
-public:
-    char pad_0000[136]; // 0x0000
-};                      // Size: 0x0088
 
 struct ServerSpawnInfo
 {
