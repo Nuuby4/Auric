@@ -7,14 +7,19 @@
 
 #include <EASTL/string.h>
 #include <string>
+#include <EASTL/internal/config.h>
 
 #define EASTL_USER_DEFINED_ALLOCATOR
 
 namespace eastl
 {
-
 EmptyString gEmptyString = *reinterpret_cast<EmptyString*>(0x14281CB20);
 
+void AssertionFailure(const char* expression)
+{
+    KYBER_LOG(Kyber::LogLevel::Error, "[EASTL] Assertion failed: " << expression);
+    __debugbreak();
+}
 }
 
 void* operator new[](

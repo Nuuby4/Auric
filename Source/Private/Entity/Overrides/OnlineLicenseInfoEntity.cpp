@@ -15,7 +15,6 @@ OnlineLicenseInfoEntity::OnlineLicenseInfoEntity(EntityManager* entityManager, N
     m_out = CreateFieldOverride<bool>("Available", g_program->m_entityManager->GetNativeType("Boolean"));
     
     // @TODO Create System Settings for this
-    m_result = true;
-    m_out = &m_result;
+    m_out = true;
 }
 } // namespace Kyber

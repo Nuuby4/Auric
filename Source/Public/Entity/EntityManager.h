@@ -141,6 +141,12 @@ struct PropertyWriter : PropertyWriterBase
     {
         Set(&value);
     }
+
+    void operator=(const T& value) const
+    {
+        T tmp = value;
+        Set(&tmp);
+    }
 };
 
 class AuricEntityBase
